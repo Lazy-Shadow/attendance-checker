@@ -41,7 +41,7 @@ class QrDisplayScreen extends StatelessWidget {
         await directory.create(recursive: true);
       }
       
-      final fileName = '${student.firstName}_${student.middleName}_${student.lastName}.png'.toLowerCase();
+      final fileName = '${student.fileName}.png';
       final file = File('${directory.path}/$fileName');
       await file.writeAsBytes(byteData.buffer.asUint8List());
 
@@ -132,7 +132,7 @@ class QrDisplayScreen extends StatelessWidget {
                             border: Border.all(color: Colors.grey[200]!, width: 2),
                           ),
                           child: QrImageView(
-                            data: student.toJsonString(),
+                            data: student.studentNumber,
                             version: QrVersions.auto,
                             size: 220.0,
                             backgroundColor: Colors.white,
@@ -140,22 +140,13 @@ class QrDisplayScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 20),
                         Text(
-                          student.fullName,
+                          '${student.lastName}, ${student.firstName}',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF1F2937),
+                            color: Colors.red,
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _buildInfoChip(Icons.book, student.program),
-                            const SizedBox(width: 8),
-                            _buildInfoChip(Icons.school, student.year),
-                          ],
                         ),
                       ],
                     ),

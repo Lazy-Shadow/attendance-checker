@@ -8,10 +8,7 @@ import 'screens/home_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
   runApp(const MyApp());
 }
 
@@ -32,21 +29,16 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color.fromARGB(255, 11, 124, 71),
+            seedColor: const Color(0xFF2563EB),
             brightness: Brightness.light,
           ),
           scaffoldBackgroundColor: const Color(0xFFF5F7FA),
-          appBarTheme: const AppBarTheme(
-            centerTitle: true,
-            elevation: 0,
-          ),
+          appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
           inputDecorationTheme: InputDecorationTheme(

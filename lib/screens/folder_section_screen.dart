@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import '../models/student.dart';
 import '../providers/folder_provider.dart';
 import 'qr_display_screen.dart';
@@ -17,20 +20,17 @@ class FolderSectionScreen extends StatefulWidget {
 class _FolderSectionScreenState extends State<FolderSectionScreen> {
   final _formKey = GlobalKey<FormState>();
   final _firstNameController = TextEditingController();
-  final _middleNameController = TextEditingController();
   final _lastNameController = TextEditingController();
-  String? _selectedYear;
-  String? _selectedProgram;
+  final _studentNumberController = TextEditingController();
+  final _programYearController = TextEditingController();
   final Uuid _uuid = const Uuid();
-
-  final List<String> _years = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'];
-  final List<String> _programs = ['BSIT', 'BSCS', 'BSBA', 'BSA', 'ABPOLSOC', 'ABENG', 'ABPSYCH', 'BSCE', 'BSEE', 'BSME'];
 
   @override
   void dispose() {
     _firstNameController.dispose();
-    _middleNameController.dispose();
     _lastNameController.dispose();
+    _studentNumberController.dispose();
+    _programYearController.dispose();
     super.dispose();
   }
 
@@ -120,17 +120,6 @@ class _FolderSectionScreenState extends State<FolderSectionScreen> {
                             ),
                             const SizedBox(height: 12),
                             TextFormField(
-                              controller: _middleNameController,
-                              decoration: _inputDecoration('Middle Name', Icons.person_outline),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Please enter middle name';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 12),
-                            TextFormField(
                               controller: _lastNameController,
                               decoration: _inputDecoration('Last Name', Icons.person_outline),
                               validator: (value) {
@@ -141,43 +130,23 @@ class _FolderSectionScreenState extends State<FolderSectionScreen> {
                               },
                             ),
                             const SizedBox(height: 12),
-                            DropdownButtonFormField<String>(
-                              decoration: _inputDecoration('Year', Icons.school),
-                              items: _years.map((year) {
-                                return DropdownMenuItem(
-                                  value: year,
-                                  child: Text(year),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedYear = value;
-                                });
-                              },
+                            TextFormField(
+                              controller: _studentNumberController,
+                              decoration: _inputDecoration('Student Number', Icons.numbers),
                               validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please select year';
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter student number';
                                 }
                                 return null;
                               },
                             ),
                             const SizedBox(height: 12),
-                            DropdownButtonFormField<String>(
-                              decoration: _inputDecoration('Program', Icons.book),
-                              items: _programs.map((program) {
-                                return DropdownMenuItem(
-                                  value: program,
-                                  child: Text(program),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedProgram = value;
-                                });
-                              },
+                            TextFormField(
+                              controller: _programYearController,
+                              decoration: _inputDecoration('Program & Year', Icons.school),
                               validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please select program';
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter program & year';
                                 }
                                 return null;
                               },
@@ -233,21 +202,19 @@ class _FolderSectionScreenState extends State<FolderSectionScreen> {
       final student = Student(
         id: _uuid.v4(),
         firstName: _firstNameController.text.trim(),
-        middleName: _middleNameController.text.trim(),
+        middleName: '',
         lastName: _lastNameController.text.trim(),
-        year: _selectedYear!,
-        program: _selectedProgram!,
+        studentNumber: _studentNumberController.text.trim(),
+        year: '',
+        program: _programYearController.text.trim(),
       );
 
-      folderProvider.addStudentToFolder(widget.folderId, student);
+      folderProvider.addStudent(widget.folderId, student);
 
       _firstNameController.clear();
-      _middleNameController.clear();
       _lastNameController.clear();
-      setState(() {
-        _selectedYear = null;
-        _selectedProgram = null;
-      });
+      _studentNumberController.clear();
+      _programYearController.clear();
       Navigator.pop(context);
 
       Navigator.push(
@@ -256,7 +223,7 @@ class _FolderSectionScreenState extends State<FolderSectionScreen> {
           builder: (context) => QrDisplayScreen(
             student: student,
             onDelete: () {
-              context.read<FolderProvider>().removeStudentFromFolder(widget.folderId, student.id);
+              context.read<FolderProvider>().removeStudent(widget.folderId, student.id);
             },
           ),
         ),
@@ -264,9 +231,192 @@ class _FolderSectionScreenState extends State<FolderSectionScreen> {
     }
   }
 
+  void _showEditStudentDialog(Student student) {
+    final firstNameController = TextEditingController(text: student.firstName);
+    final lastNameController = TextEditingController(text: student.lastName);
+    final studentNumberController = TextEditingController(text: student.studentNumber);
+    final programYearController = TextEditingController(text: student.program);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.75,
+        decoration: const BoxDecoration(
+          color: Color(0xFFF5F7FA),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Edit Student',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: firstNameController,
+                      decoration: _inputDecoration('First Name', Icons.person_outline),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: lastNameController,
+                      decoration: _inputDecoration('Last Name', Icons.person_outline),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: studentNumberController,
+                      decoration: _inputDecoration('Student Number', Icons.numbers),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: programYearController,
+                      decoration: _inputDecoration('Program & Year', Icons.school),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          final updatedStudent = Student(
+                            id: student.id,
+                            firstName: firstNameController.text.trim(),
+                            middleName: '',
+                            lastName: lastNameController.text.trim(),
+                            studentNumber: studentNumberController.text.trim(),
+                            year: '',
+                            program: programYearController.text.trim(),
+                          );
+                          context.read<FolderProvider>().updateStudent(widget.folderId, updatedStudent);
+                          Navigator.pop(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF10B981),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Save Changes'),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickFiles() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        type: FileType.any,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final folderProvider = context.read<FolderProvider>();
+        
+        for (final file in result.files) {
+          if (file.path != null) {
+            final appDir = await getApplicationDocumentsDirectory();
+            final fileDir = Directory('${appDir.path}/folder_files/${widget.folderId}');
+            if (!await fileDir.exists()) {
+              await fileDir.create(recursive: true);
+            }
+            
+            final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+            final newPath = '${fileDir.path}/$fileName';
+            
+            final sourceFile = File(file.path!);
+            await sourceFile.copy(newPath);
+            
+            String type = 'file';
+            if (file.name.toLowerCase().endsWith('.jpg') ||
+                file.name.toLowerCase().endsWith('.jpeg') ||
+                file.name.toLowerCase().endsWith('.png') ||
+                file.name.toLowerCase().endsWith('.gif')) {
+              type = 'image';
+            } else if (file.name.toLowerCase().endsWith('.pdf')) {
+              type = 'pdf';
+            } else if (file.name.toLowerCase().endsWith('.doc') ||
+                file.name.toLowerCase().endsWith('.docx')) {
+              type = 'document';
+            }
+            
+            final uploadedFile = UploadedFile(
+              id: DateTime.now().millisecondsSinceEpoch.toString() + file.name,
+              name: file.name,
+              path: newPath,
+              type: type,
+              uploadedAt: DateTime.now(),
+            );
+            
+            folderProvider.addFile(widget.folderId, uploadedFile);
+          }
+        }
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${result.files.length} file(s) uploaded'),
+              backgroundColor: const Color(0xFF10B981),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error uploading files: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   void _showFolderOptions() {
     final folderProvider = context.read<FolderProvider>();
-    final folder = folderProvider.folders.firstWhere((f) => f.id == widget.folderId);
+    Folder folder;
+    try {
+      folder = folderProvider.folders.firstWhere((f) => f.id == widget.folderId);
+    } catch (e) {
+      if (folderProvider.folders.isEmpty) return;
+      folder = folderProvider.folders.first;
+    }
     
     showModalBottomSheet(
       context: context,
@@ -314,29 +464,23 @@ class _FolderSectionScreenState extends State<FolderSectionScreen> {
             ),
             const SizedBox(height: 24),
             ListTile(
-              leading: const Icon(Icons.edit, color: Color(0xFF2563EB)),
-              title: const Text('Rename Section'),
+              leading: Icon(Icons.folder, color: Color(0xFF2563EB)),
+              title: const Text('Download Folder'),
               onTap: () {
                 Navigator.pop(ctx);
-                _showRenameDialog(folder.name);
+                folderProvider.downloadFolder(context, folder);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.download, color: Color(0xFF10B981)),
+              leading: Icon(Icons.download, color: Color(0xFF10B981)),
               title: const Text('Download All QR Codes'),
               onTap: () {
                 Navigator.pop(ctx);
-                folderProvider.downloadFolder(folder);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Downloaded ${folder.name} folder'),
-                    backgroundColor: const Color(0xFF10B981),
-                  ),
-                );
+                folderProvider.downloadFolder(context, folder);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete, color: Colors.red),
+              leading: Icon(Icons.delete, color: Colors.red),
               title: const Text('Delete Section', style: TextStyle(color: Colors.red)),
               onTap: () {
                 Navigator.pop(ctx);
@@ -380,7 +524,7 @@ class _FolderSectionScreenState extends State<FolderSectionScreen> {
           ElevatedButton(
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
-                context.read<FolderProvider>().renameFolder(widget.folderId, controller.text.trim());
+                context.read<FolderProvider>().rename(widget.folderId, controller.text.trim());
                 Navigator.pop(ctx);
               }
             },
@@ -409,7 +553,7 @@ class _FolderSectionScreenState extends State<FolderSectionScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              context.read<FolderProvider>().deleteFolder(widget.folderId);
+              context.read<FolderProvider>().delete(widget.folderId);
               Navigator.pop(ctx);
               Navigator.pop(context);
             },
@@ -543,10 +687,15 @@ class _FolderSectionScreenState extends State<FolderSectionScreen> {
                     student.fullName,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text('${student.program} - ${student.year}'),
+                  subtitle: Text(student.program),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Color(0xFF2563EB)),
+                        onPressed: () => _showEditStudentDialog(student),
+                        tooltip: 'Edit',
+                      ),
                       IconButton(
                         icon: const Icon(Icons.qr_code, color: Color(0xFF2563EB)),
                         onPressed: () {
@@ -556,7 +705,7 @@ class _FolderSectionScreenState extends State<FolderSectionScreen> {
                               builder: (context) => QrDisplayScreen(
                                 student: student,
                                 onDelete: () {
-                                  context.read<FolderProvider>().removeStudentFromFolder(widget.folderId, student.id);
+                                  context.read<FolderProvider>().removeStudent(widget.folderId, student.id);
                                 },
                               ),
                             ),
@@ -567,7 +716,7 @@ class _FolderSectionScreenState extends State<FolderSectionScreen> {
                       IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
                         onPressed: () {
-                          folderProvider.removeStudentFromFolder(widget.folderId, student.id);
+                          folderProvider.removeStudent(widget.folderId, student.id);
                         },
                       ),
                     ],

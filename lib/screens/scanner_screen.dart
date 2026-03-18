@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../models/student.dart';
 import '../models/attendance_record.dart';
 import '../providers/day_provider.dart';
+import '../providers/folder_provider.dart';
 
 class ScannerScreen extends StatefulWidget {
   const ScannerScreen({super.key});
@@ -17,7 +18,7 @@ class ScannerScreen extends StatefulWidget {
 class _ScannerScreenState extends State<ScannerScreen> {
   MobileScannerController? _controller;
   String? _lastScannedCode;
-  int _selectedFilter = 1;
+  int _selectedFilter = 0;
   bool _isProcessing = false;
   final TextEditingController _manualInputController = TextEditingController();
   bool _showManualInput = false;
@@ -61,13 +62,25 @@ class _ScannerScreenState extends State<ScannerScreen> {
   }
 
   void _processQrCode(String qrData) {
-    try {
-      final student = Student.fromJsonString(qrData);
-      _autoRecordAttendance(student);
-    } catch (e) {
+    final folderProvider = context.read<FolderProvider>();
+    Student? foundStudent;
+    
+    for (final folder in folderProvider.folders) {
+      for (final student in folder.students) {
+        if (student.studentNumber == qrData) {
+          foundStudent = student;
+          break;
+        }
+      }
+      if (foundStudent != null) break;
+    }
+    
+    if (foundStudent != null) {
+      _autoRecordAttendance(foundStudent);
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Invalid QR code'),
+          content: Text('Student not found'),
           backgroundColor: Colors.red,
         ),
       );
@@ -89,20 +102,27 @@ class _ScannerScreenState extends State<ScannerScreen> {
   void _autoRecordAttendance(Student student) {
     final dayProvider = context.read<DayProvider>();
     
-    if (dayProvider.selectedDayId == null) {
-      _showErrorSnackBar('Please select a Day first');
+    if (dayProvider.selectedId == null) {
+      _showErrorSnackBar('Please select an Event first');
       return;
     }
 
-    final AttendanceType type = _selectedFilter == 1 ? AttendanceType.timeIn : AttendanceType.timeOut;
-    final dayId = dayProvider.selectedDayId!;
-
-    if (type == AttendanceType.timeIn && dayProvider.hasTimeIn(dayId, student.id)) {
+    final AttendanceType type;
+    String typeText;
+    if (_selectedFilter == 2) {
+      type = AttendanceType.timeOut;
+      typeText = 'Time Out';
+    } else {
+      type = AttendanceType.timeIn;
+      typeText = 'Time In';
+    }
+    
+    if (type == AttendanceType.timeIn && dayProvider.hasTimeIn(dayProvider.selectedId!, student.id)) {
       _showWarningSnackBar('${student.fullName} already timed in');
       return;
     }
 
-    if (type == AttendanceType.timeOut && dayProvider.hasTimeOut(dayId, student.id)) {
+    if (type == AttendanceType.timeOut && dayProvider.hasTimeOut(dayProvider.selectedId!, student.id)) {
       _showWarningSnackBar('${student.fullName} already timed out');
       return;
     }
@@ -114,11 +134,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
       type: type,
     );
 
-    dayProvider.addRecordToDay(dayId, record);
+    dayProvider.addRecord(dayProvider.selectedId!, record);
 
     final dateFormat = DateFormat('MMMM dd');
     final timeFormat = DateFormat('h:mm a');
-    final typeText = type == AttendanceType.timeIn ? 'Time In' : 'Time Out';
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -232,6 +251,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
+                _buildFilterButton(0, 'All', Icons.list),
                 _buildFilterButton(1, 'Time In', Icons.login),
                 _buildFilterButton(2, 'Time Out', Icons.logout),
               ],
@@ -260,9 +280,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
-                value: dayProvider.selectedDayId,
+                value: dayProvider.selectedId,
                 isExpanded: true,
-                hint: const Text('Select Day'),
+                hint: const Text('Select Event'),
                 icon: const Icon(Icons.calendar_today, size: 18),
                 items: dayProvider.days.map((day) {
                   return DropdownMenuItem(
@@ -272,7 +292,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 }).toList(),
                 onChanged: (value) {
                   if (value != null) {
-                    dayProvider.selectDay(value);
+                    dayProvider.select(value);
                   }
                 },
               ),
@@ -322,13 +342,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: _selectedFilter == 1 
-                        ? const Color(0xFF10B981).withValues(alpha: 0.9)
-                        : const Color(0xFFEF4444).withValues(alpha: 0.9),
+                    color: Colors.black.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    _selectedFilter == 1 ? 'Recording: Time In' : 'Recording: Time Out',
+                    _selectedFilter == 0 ? 'Recording: Time In' : _selectedFilter == 1 ? 'Recording: Time In' : 'Recording: Time Out',
                     style: const TextStyle(
                       color: Colors.white, 
                       fontSize: 14, 
@@ -427,18 +445,18 @@ class _ScannerScreenState extends State<ScannerScreen> {
         final day = dayProvider.selectedDay;
         if (day == null) {
           return Center(
-            child: Column(
+                child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.calendar_today, size: 48, color: Colors.grey[300]),
                 const SizedBox(height: 16),
                 Text(
-                  'No Day selected',
+                  'No Event selected',
                   style: TextStyle(color: Colors.grey[500], fontSize: 16),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Create a Day in Attendance to start',
+                  'Create an Event in Attendance to start',
                   style: TextStyle(color: Colors.grey[400]),
                 ),
               ],
@@ -449,8 +467,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
         List<AttendanceRecord> filteredRecords;
         if (_selectedFilter == 1) {
           filteredRecords = day.records.where((r) => r.type == AttendanceType.timeIn).toList();
-        } else {
+        } else if (_selectedFilter == 2) {
           filteredRecords = day.records.where((r) => r.type == AttendanceType.timeOut).toList();
+        } else {
+          filteredRecords = day.records;
         }
 
         if (filteredRecords.isEmpty) {
@@ -461,7 +481,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 Icon(Icons.inbox, size: 48, color: Colors.grey[300]),
                 const SizedBox(height: 16),
                 Text(
-                  'No ${_selectedFilter == 1 ? "Time In" : "Time Out"} records',
+                  _selectedFilter == 0 ? 'No records yet' : 'No ${_selectedFilter == 1 ? "Time In" : "Time Out"} records',
                   style: TextStyle(color: Colors.grey[500], fontSize: 16),
                 ),
               ],
@@ -507,11 +527,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   ),
                 ),
                 title: Text(
-                  '${record.student.fullName} ${record.student.program} ${record.student.year}',
+                  record.student.fullName,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
-                  '${isTimeIn ? "Time In" : "Time Out"} • ${timeFormat.format(record.timestamp)}',
+                  '${record.student.program} • ${isTimeIn ? "Time In" : "Time Out"} • ${DateFormat('h:mm a • MMM dd').format(record.timestamp)}',
                 ),
                 trailing: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -536,18 +556,20 @@ class _ScannerScreenState extends State<ScannerScreen> {
     );
   }
 
+  void _onFilterSelected(int index) {
+    setState(() {
+      _selectedFilter = index;
+    });
+  }
+
   Widget _buildFilterButton(int index, String label, IconData icon) {
     final isSelected = _selectedFilter == index;
-    final color = index == 1 ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+    final color = index == 1 ? const Color(0xFF10B981) : index == 2 ? const Color(0xFFEF4444) : const Color(0xFF8B5CF6);
     
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedFilter = index;
-        });
-      },
+      onTap: () => _onFilterSelected(index),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected ? color : Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -561,18 +583,23 @@ class _ScannerScreenState extends State<ScannerScreen> {
           ],
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
               size: 18,
               color: isSelected ? Colors.white : Colors.grey[600],
             ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.grey[600],
-                fontWeight: FontWeight.w600,
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.grey[600],
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

@@ -16,20 +16,17 @@ class QrGeneratorScreen extends StatefulWidget {
 class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
   final _formKey = GlobalKey<FormState>();
   final _firstNameController = TextEditingController();
-  final _middleNameController = TextEditingController();
   final _lastNameController = TextEditingController();
-  String? _selectedYear;
-  String? _selectedProgram;
+  final _studentNumberController = TextEditingController();
+  final _programYearController = TextEditingController();
   final Uuid _uuid = const Uuid();
-
-  final List<String> _years = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'];
-  final List<String> _programs = ['BSIT', 'BSCS', 'BSBA', 'BSA', 'ABPOLSOC', 'ABENG', 'ABPSYCH', 'BSCE', 'BSEE', 'BSME'];
 
   @override
   void dispose() {
     _firstNameController.dispose();
-    _middleNameController.dispose();
     _lastNameController.dispose();
+    _studentNumberController.dispose();
+    _programYearController.dispose();
     super.dispose();
   }
 
@@ -50,7 +47,7 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
           controller: controller,
           decoration: InputDecoration(
             labelText: 'Section Name',
-            hintText: 'e.g., BSIT 1-A',
+            hintText: 'Program And Year',
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -65,7 +62,7 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
           ElevatedButton(
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
-                context.read<FolderProvider>().createFolder(controller.text.trim());
+                context.read<FolderProvider>().create(controller.text.trim());
                 Navigator.pop(context);
               }
             },
@@ -177,17 +174,6 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                             ),
                             const SizedBox(height: 12),
                             TextFormField(
-                              controller: _middleNameController,
-                              decoration: _inputDecoration('Middle Name', Icons.person_outline),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Please enter middle name';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 12),
-                            TextFormField(
                               controller: _lastNameController,
                               decoration: _inputDecoration('Last Name', Icons.person_outline),
                               validator: (value) {
@@ -198,43 +184,23 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                               },
                             ),
                             const SizedBox(height: 12),
-                            DropdownButtonFormField<String>(
-                              decoration: _inputDecoration('Year', Icons.school),
-                              items: _years.map((year) {
-                                return DropdownMenuItem(
-                                  value: year,
-                                  child: Text(year),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedYear = value;
-                                });
-                              },
+                            TextFormField(
+                              controller: _studentNumberController,
+                              decoration: _inputDecoration('Student Number', Icons.numbers),
                               validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please select year';
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter student number';
                                 }
                                 return null;
                               },
                             ),
                             const SizedBox(height: 12),
-                            DropdownButtonFormField<String>(
-                              decoration: _inputDecoration('Program', Icons.book),
-                              items: _programs.map((program) {
-                                return DropdownMenuItem(
-                                  value: program,
-                                  child: Text(program),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedProgram = value;
-                                });
-                              },
+                            TextFormField(
+                              controller: _programYearController,
+                              decoration: _inputDecoration('Program & Year', Icons.school),
                               validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please select program';
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter program & year';
                                 }
                                 return null;
                               },
@@ -286,33 +252,32 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
 
   void _generateQr() {
     if (_formKey.currentState!.validate()) {
-      final folderProvider = context.read<FolderProvider>();
+      final fp = context.read<FolderProvider>();
       final student = Student(
         id: _uuid.v4(),
         firstName: _firstNameController.text.trim(),
-        middleName: _middleNameController.text.trim(),
+        middleName: '',
         lastName: _lastNameController.text.trim(),
-        year: _selectedYear!,
-        program: _selectedProgram!,
+        studentNumber: _studentNumberController.text.trim(),
+        year: '',
+        program: _programYearController.text.trim(),
       );
 
-      if (folderProvider.selectedFolderId != null) {
-        folderProvider.addStudentToFolder(folderProvider.selectedFolderId!, student);
-      }
+      fp.addStudent(fp.selectedId!, student);
 
       _firstNameController.clear();
-      _middleNameController.clear();
       _lastNameController.clear();
-      setState(() {
-        _selectedYear = null;
-        _selectedProgram = null;
-      });
+      _studentNumberController.clear();
+      _programYearController.clear();
       Navigator.pop(context);
 
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => QrDisplayScreen(student: student),
+          builder: (context) => QrDisplayScreen(
+            student: student,
+            onDelete: () => fp.removeStudent(fp.selectedId!, student.id),
+          ),
         ),
       );
     }
@@ -593,19 +558,31 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
             ),
             const SizedBox(height: 24),
             ListTile(
-              leading: const Icon(Icons.download, color: Color(0xFF10B981)),
+              leading: Icon(Icons.folder, color: Color(0xFF2563EB)),
+              title: const Text('Download Folder'),
+              onTap: () {
+                Navigator.pop(context);
+                final folderProvider = context.read<FolderProvider>();
+                try {
+                  final folder = folderProvider.folders.firstWhere((f) => f.id == folderId);
+                  folderProvider.downloadFolder(context, folder);
+                } catch (e) {
+                  // Folder not found
+                }
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.download, color: Color(0xFF10B981)),
               title: const Text('Download All QR Codes'),
               onTap: () {
                 Navigator.pop(context);
                 final folderProvider = context.read<FolderProvider>();
-                final folder = folderProvider.folders.firstWhere((f) => f.id == folderId);
-                folderProvider.downloadFolder(folder);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Downloaded $folderName folder'),
-                    backgroundColor: const Color(0xFF10B981),
-                  ),
-                );
+                try {
+                  final folder = folderProvider.folders.firstWhere((f) => f.id == folderId);
+                  folderProvider.downloadFolder(context, folder);
+                } catch (e) {
+                  // Folder not found
+                }
               },
             ),
             ListTile(
@@ -636,7 +613,7 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              context.read<FolderProvider>().deleteFolder(folderId);
+              context.read<FolderProvider>().delete(folderId);
               Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(

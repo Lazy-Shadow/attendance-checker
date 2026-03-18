@@ -34,7 +34,7 @@ class HomeScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF2563EB).withOpacity(0.3),
+                      color: const Color(0xFF2563EB).withValues(alpha: 0.3),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
@@ -115,7 +115,7 @@ class HomeScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -127,14 +127,10 @@ class HomeScreen extends StatelessWidget {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 28,
-                ),
+                child: Icon(icon, color: color, size: 28),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -152,19 +148,12 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
                   ],
                 ),
               ),
-              Icon(
-                Icons.arrow_forward_ios,
-                color: Colors.grey[400],
-                size: 20,
-              ),
+              Icon(Icons.arrow_forward_ios, color: Colors.grey[400], size: 20),
             ],
           ),
         ),

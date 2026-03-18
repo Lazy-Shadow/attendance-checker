@@ -15,10 +15,23 @@ class AttendanceDayScreen extends StatefulWidget {
 
 class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
   int _selectedFilter = 0;
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   void _showFolderOptions() {
     final dayProvider = context.read<DayProvider>();
-    final day = dayProvider.days.firstWhere((d) => d.id == widget.dayId);
+    Day day;
+    try {
+      day = dayProvider.days.firstWhere((d) => d.id == widget.dayId);
+    } catch (e) {
+      if (dayProvider.days.isEmpty) return;
+      day = dayProvider.days.first;
+    }
     
     showModalBottomSheet(
       context: context,
@@ -67,7 +80,7 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
             const SizedBox(height: 24),
             ListTile(
               leading: const Icon(Icons.edit, color: Color(0xFF2563EB)),
-              title: const Text('Rename Day'),
+              title: const Text('Rename Event'),
               onTap: () {
                 Navigator.pop(ctx);
                 _showRenameDialog(day.name);
@@ -83,7 +96,7 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text('Delete Day', style: TextStyle(color: Colors.red)),
+              title: const Text('Delete Event', style: TextStyle(color: Colors.red)),
               onTap: () {
                 Navigator.pop(ctx);
                 _confirmDeleteDay(day.name);
@@ -111,7 +124,7 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
         content: TextField(
           controller: controller,
           decoration: InputDecoration(
-            labelText: 'Day Name',
+            labelText: 'Event',
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -126,7 +139,7 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
           ElevatedButton(
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
-                context.read<DayProvider>().renameDay(widget.dayId, controller.text.trim());
+                context.read<DayProvider>().rename(widget.dayId, controller.text.trim());
                 Navigator.pop(ctx);
               }
             },
@@ -155,7 +168,7 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              context.read<DayProvider>().clearDayRecords(widget.dayId);
+              context.read<DayProvider>().clearRecords(widget.dayId);
               Navigator.pop(ctx);
             },
             style: ElevatedButton.styleFrom(
@@ -183,7 +196,7 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              context.read<DayProvider>().deleteDay(widget.dayId);
+              context.read<DayProvider>().delete(widget.dayId);
               Navigator.pop(ctx);
               Navigator.pop(context);
             },
@@ -258,13 +271,17 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
           }
 
           List<AttendanceRecord> filteredRecords;
-          if (_selectedFilter == 1) {
-            filteredRecords = day.records.where((r) => r.type == AttendanceType.timeIn).toList();
-          } else if (_selectedFilter == 2) {
-            filteredRecords = day.records.where((r) => r.type == AttendanceType.timeOut).toList();
-          } else {
-            filteredRecords = day.records;
-          }
+          final searchQuery = _searchController.text.toLowerCase();
+          
+          filteredRecords = day.records.where((r) {
+            final nameMatch = r.student.fullName.toLowerCase().contains(searchQuery);
+            if (_selectedFilter == 1) {
+              return r.type == AttendanceType.timeIn && nameMatch;
+            } else if (_selectedFilter == 2) {
+              return r.type == AttendanceType.timeOut && nameMatch;
+            }
+            return nameMatch;
+          }).toList();
 
           return Column(
             children: [
@@ -277,12 +294,34 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                     bottomRight: Radius.circular(24),
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                child: Column(
                   children: [
-                    _buildFilterButton(0, 'All', Icons.list),
-                    _buildFilterButton(1, 'Time In', Icons.login),
-                    _buildFilterButton(2, 'Time Out', Icons.logout),
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search by name',
+                        prefixIcon: const Icon(Icons.search, color: Colors.white70),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.2),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        hintStyle: const TextStyle(color: Colors.white70),
+                      ),
+                      style: const TextStyle(color: Colors.white),
+                      onChanged: (value) => setState(() {}),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildFilterButton(0, 'All', Icons.list),
+                        _buildFilterButton(1, 'Time In', Icons.login),
+                        _buildFilterButton(2, 'Time Out', Icons.logout),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -325,7 +364,6 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                         itemCount: filteredRecords.length,
                         itemBuilder: (context, index) {
                           final record = filteredRecords[index];
-                          final timeFormat = DateFormat('h:mm a');
                           final isTimeIn = record.type == AttendanceType.timeIn;
 
                           return Container(
@@ -374,7 +412,7 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                                             ),
                                           ),
                                           const SizedBox(width: 16),
-                                          Expanded(
+                                            Expanded(
                                             child: Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
@@ -401,15 +439,11 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                                                       ),
                                                     ),
                                                     const SizedBox(width: 8),
-                                                    Container(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                      decoration: BoxDecoration(
-                                                        color: const Color(0xFFF3F4F6),
-                                                        borderRadius: BorderRadius.circular(4),
-                                                      ),
-                                                      child: Text(
-                                                        record.student.year,
-                                                        style: const TextStyle(fontSize: 12),
+                                                    Text(
+                                                      DateFormat('h:mm a • MMM dd').format(record.timestamp),
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.grey[600],
                                                       ),
                                                     ),
                                                   ],
@@ -421,15 +455,6 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                                             crossAxisAlignment: CrossAxisAlignment.end,
                                             mainAxisAlignment: MainAxisAlignment.center,
                                             children: [
-                                              Text(
-                                                timeFormat.format(record.timestamp),
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 16,
-                                                  color: Color(0xFF1F2937),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 4),
                                               Container(
                                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                                 decoration: BoxDecoration(
@@ -443,6 +468,41 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                                                     fontSize: 10,
                                                     fontWeight: FontWeight.bold,
                                                   ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              GestureDetector(
+                                                onTap: () {
+                                                  showDialog(
+                                                    context: context,
+                                                    builder: (ctx) => AlertDialog(
+                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                                      title: const Text('Delete Record?'),
+                                                      content: Text('Are you sure you want to delete ${record.student.fullName}\'s attendance record?'),
+                                                      actions: [
+                                                        TextButton(
+                                                          onPressed: () => Navigator.pop(ctx),
+                                                          child: const Text('Cancel'),
+                                                        ),
+                                                        ElevatedButton(
+                                                          onPressed: () {
+                                                            context.read<DayProvider>().deleteRecord(widget.dayId, record.id);
+                                                            Navigator.pop(ctx);
+                                                          },
+                                                          style: ElevatedButton.styleFrom(
+                                                            backgroundColor: Colors.red,
+                                                            foregroundColor: Colors.white,
+                                                          ),
+                                                          child: const Text('Delete'),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                },
+                                                child: Icon(
+                                                  Icons.delete_outline,
+                                                  size: 20,
+                                                  color: Colors.grey[400],
                                                 ),
                                               ),
                                             ],
@@ -474,24 +534,29 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
               size: 18,
               color: isSelected ? const Color(0xFF8B5CF6) : Colors.white70,
             ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? const Color(0xFF8B5CF6) : Colors.white,
-                fontWeight: FontWeight.w600,
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? const Color(0xFF8B5CF6) : Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

@@ -25,11 +25,15 @@ class AttendanceRecord {
 
   factory AttendanceRecord.fromJsonString(String jsonString) {
     final map = jsonDecode(jsonString);
+    final typeStr = map['type'] as String?;
+    final attendanceType = typeStr != null && AttendanceType.values.any((e) => e.name == typeStr)
+        ? AttendanceType.values.firstWhere((e) => e.name == typeStr)
+        : AttendanceType.timeIn;
     return AttendanceRecord(
       id: map['id'],
       student: Student.fromJsonString(map['student']),
       timestamp: DateTime.parse(map['timestamp']),
-      type: AttendanceType.values.firstWhere((e) => e.name == map['type']),
+      type: attendanceType,
     );
   }
 }

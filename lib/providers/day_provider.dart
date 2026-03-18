@@ -8,7 +8,7 @@ class Day {
   final String id;
   final String name;
   final DateTime createdAt;
-  List<AttendanceRecord> records;
+  final List<AttendanceRecord> records;
 
   Day({
     required this.id,
@@ -29,86 +29,97 @@ class Day {
       id: json['id'],
       name: json['name'],
       createdAt: DateTime.parse(json['createdAt']),
-      records: (json['records'] as List<dynamic>?)
-          ?.map((r) => AttendanceRecord.fromJsonString(r))
-          .toList() ?? [],
+      records: (json['records'] as List?)?.map((r) => AttendanceRecord.fromJsonString(r)).toList() ?? [],
     );
   }
 }
 
 class DayProvider extends ChangeNotifier {
   List<Day> _days = [];
-  String? _selectedDayId;
+  String? _selectedId;
 
   List<Day> get days => _days;
-  String? get selectedDayId => _selectedDayId;
-  
-  Day? get selectedDay => 
-      _selectedDayId != null 
-          ? _days.firstWhere((d) => d.id == _selectedDayId, orElse: () => _days.first)
-          : null;
-
-  DayProvider() {
-    _loadDays();
+  String? get selectedId => _selectedId;
+  Day? get selectedDay {
+    if (_selectedId == null || _days.isEmpty) return null;
+    try {
+      return _days.firstWhere((d) => d.id == _selectedId);
+    } catch (e) {
+      return _days.first;
+    }
   }
 
-  Future<void> _loadDays() async {
+  DayProvider() { _load(); }
+
+  Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    final String? data = prefs.getString('days');
+    final data = prefs.getString('days');
     if (data != null) {
-      final List<dynamic> jsonList = jsonDecode(data);
-      _days = jsonList.map((e) => Day.fromJson(e)).toList();
-      if (_days.isNotEmpty) {
-        _selectedDayId = _days.first.id;
-      }
+      _days = (jsonDecode(data) as List).map((e) => Day.fromJson(e)).toList();
+      if (_days.isNotEmpty) _selectedId = _days.first.id;
       notifyListeners();
     }
   }
 
-  Future<void> _saveDays() async {
+  Future<void> _save() async {
     final prefs = await SharedPreferences.getInstance();
-    final String data = jsonEncode(_days.map((d) => d.toJson()).toList());
-    await prefs.setString('days', data);
+    await prefs.setString('days', jsonEncode(_days.map((d) => d.toJson()).toList()));
   }
 
-  void createDay(String name) {
+  void create(String name) {
     final day = Day(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,
       createdAt: DateTime.now(),
     );
-    _days.insert(0, day);
-    if (_selectedDayId == null) {
-      _selectedDayId = day.id;
-    }
-    _saveDays();
+    _days.add(day);
+    _selectedId ??= day.id;
+    _save();
     notifyListeners();
   }
 
-  void deleteDay(String id) {
-    _days.removeWhere((d) => d.id == id);
-    if (_selectedDayId == id) {
-      _selectedDayId = _days.isNotEmpty ? _days.first.id : null;
-    }
-    _saveDays();
-    notifyListeners();
-  }
-
-  void selectDay(String id) {
-    _selectedDayId = id;
-    notifyListeners();
-  }
-
-  void renameDay(String id, String newName) {
-    final index = _days.indexWhere((d) => d.id == id);
-    if (index != -1) {
-      _days[index] = Day(
-        id: _days[index].id,
+  void rename(String id, String newName) {
+    final i = _days.indexWhere((d) => d.id == id);
+    if (i != -1) {
+      _days[i] = Day(
+        id: id,
         name: newName,
-        createdAt: _days[index].createdAt,
-        records: _days[index].records,
+        createdAt: _days[i].createdAt,
+        records: _days[i].records,
       );
-      _saveDays();
+      _save();
+      notifyListeners();
+    }
+  }
+
+  void delete(String id) {
+    _days.removeWhere((d) => d.id == id);
+    if (_selectedId == id) {
+      _selectedId = _days.isNotEmpty ? _days.first.id : null;
+    }
+    _save();
+    notifyListeners();
+  }
+
+  void select(String id) {
+    _selectedId = id;
+    notifyListeners();
+  }
+
+  void clearRecords(String id) {
+    final i = _days.indexWhere((d) => d.id == id);
+    if (i != -1) {
+      _days[i].records.clear();
+      _save();
+      notifyListeners();
+    }
+  }
+
+  void deleteRecord(String dayId, String recordId) {
+    final i = _days.indexWhere((d) => d.id == dayId);
+    if (i != -1) {
+      _days[i].records.removeWhere((r) => r.id == recordId);
+      _save();
       notifyListeners();
     }
   }
@@ -129,20 +140,11 @@ class DayProvider extends ChangeNotifier {
     );
   }
 
-  void addRecordToDay(String dayId, AttendanceRecord record) {
-    final index = _days.indexWhere((d) => d.id == dayId);
-    if (index != -1) {
-      _days[index].records.insert(0, record);
-      _saveDays();
-      notifyListeners();
-    }
-  }
-
-  void clearDayRecords(String dayId) {
-    final index = _days.indexWhere((d) => d.id == dayId);
-    if (index != -1) {
-      _days[index].records.clear();
-      _saveDays();
+  void addRecord(String dayId, AttendanceRecord record) {
+    final i = _days.indexWhere((d) => d.id == dayId);
+    if (i != -1) {
+      _days[i].records.insert(0, record);
+      _save();
       notifyListeners();
     }
   }

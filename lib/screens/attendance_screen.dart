@@ -1,10 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/day_provider.dart';
+import '../models/attendance_record.dart';
 import 'attendance_day_screen.dart';
 
-class AttendanceScreen extends StatelessWidget {
+class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
+
+  @override
+  State<AttendanceScreen> createState() => _AttendanceScreenState();
+}
+
+class _AttendanceScreenState extends State<AttendanceScreen> {
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   void _showCreateDayDialog(BuildContext context) {
     final controller = TextEditingController();
@@ -16,14 +30,14 @@ class AttendanceScreen extends StatelessWidget {
           children: [
             Icon(Icons.calendar_today, color: Color(0xFF8B5CF6)),
             SizedBox(width: 8),
-            Text('Create Day'),
+            Text('Create Attendance'),
           ],
         ),
         content: TextField(
           controller: controller,
           decoration: InputDecoration(
-            labelText: 'Day Name',
-            hintText: 'e.g., Day 1, March 18',
+            labelText: 'Event',
+            hintText: 'Event name',
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -38,7 +52,7 @@ class AttendanceScreen extends StatelessWidget {
           ElevatedButton(
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
-                context.read<DayProvider>().createDay(controller.text.trim());
+                context.read<DayProvider>().create(controller.text.trim());
                 Navigator.pop(context);
               }
             },
@@ -70,7 +84,7 @@ class AttendanceScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () => _showCreateDayDialog(context),
-            tooltip: 'Create Day',
+            tooltip: 'Create Attendance',
           ),
         ],
       ),
@@ -113,7 +127,7 @@ class AttendanceScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'No Days Yet',
+              'No Events Yet',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -122,7 +136,7 @@ class AttendanceScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Create a Day to start\ntracking attendance',
+              'Create Attendance Folder To start recording attendance',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
@@ -133,7 +147,7 @@ class AttendanceScreen extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: () => _showCreateDayDialog(context),
               icon: const Icon(Icons.add),
-              label: const Text('Create Day'),
+              label: const Text('Create Attendance'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF8B5CF6),
                 foregroundColor: Colors.white,
@@ -147,109 +161,114 @@ class AttendanceScreen extends StatelessWidget {
   }
 
   Widget _buildContent(BuildContext context, DayProvider dayProvider) {
+    final searchQuery = _searchController.text.toLowerCase();
+    final filteredDays = dayProvider.days.where((day) {
+      if (searchQuery.isEmpty) return true;
+      return day.name.toLowerCase().contains(searchQuery);
+    }).toList();
+
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(16),
           color: Colors.white,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Days',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[600],
-                ),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Search by event name',
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              Text(
-                '${dayProvider.days.length} days',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[500],
-                ),
-              ),
-            ],
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            onChanged: (value) => setState(() {}),
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: dayProvider.days.length,
-            itemBuilder: (context, index) {
-              final day = dayProvider.days[index];
-              
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AttendanceDayScreen(dayId: day.id),
-                    ),
-                  );
-                },
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+          child: filteredDays.isEmpty
+              ? Center(
+                  child: Text(
+                    searchQuery.isEmpty ? 'No events yet' : 'No results found',
+                    style: TextStyle(color: Colors.grey[500]),
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 50,
-                        height: 50,
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: filteredDays.length,
+                  itemBuilder: (context, index) {
+                    final day = filteredDays[index];
+                    
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AttendanceDayScreen(dayId: day.id),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        child: const Icon(
-                          Icons.calendar_today,
-                          color: Color(0xFF8B5CF6),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
                           children: [
-                            Text(
-                              day.name,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.calendar_today,
+                                color: Color(0xFF8B5CF6),
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${day.records.length} attendance records',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[500],
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    day.name,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${day.records.length} attendance records',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[500],
+                                    ),
+                                  ),
+                                ],
                               ),
+                            ),
+                            Icon(
+                              Icons.chevron_right,
+                              color: Colors.grey[400],
                             ),
                           ],
                         ),
                       ),
-                      Icon(
-                        Icons.chevron_right,
-                        color: Colors.grey[400],
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
       ],
     );
