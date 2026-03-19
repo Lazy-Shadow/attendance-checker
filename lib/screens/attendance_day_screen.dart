@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:excel/excel.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import '../models/attendance_record.dart';
 import '../providers/day_provider.dart';
 
@@ -79,6 +82,14 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
             ),
             const SizedBox(height: 24),
             ListTile(
+              leading: const Icon(Icons.download, color: Color(0xFF10B981)),
+              title: const Text('Download as Excel'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _downloadAsExcel(day);
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.edit, color: Color(0xFF2563EB)),
               title: const Text('Rename Event'),
               onTap: () {
@@ -106,6 +117,77 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _downloadAsExcel(Day day) async {
+    try {
+      final excel = Excel.createExcel();
+      final sheet = excel['Attendance'];
+      
+      sheet.appendRow([
+        TextCellValue('Name'),
+        TextCellValue('Program And Year'),
+        TextCellValue('Date'),
+        TextCellValue('Time in'),
+        TextCellValue('Timeout'),
+      ]);
+
+      final Map<String, Map<String, DateTime?>> studentAttendance = {};
+      
+      for (final record in day.records) {
+        final key = record.student.id;
+        if (!studentAttendance.containsKey(key)) {
+          studentAttendance[key] = {'timeIn': null, 'timeOut': null};
+        }
+        if (record.type == AttendanceType.timeIn) {
+          studentAttendance[key]!['timeIn'] = record.timestamp;
+        } else {
+          studentAttendance[key]!['timeOut'] = record.timestamp;
+        }
+      }
+
+      final dateFormat = DateFormat('MMM dd, yyyy');
+      final timeFormat = DateFormat('h:mm a');
+
+      for (final entry in studentAttendance.entries) {
+        final student = day.records.firstWhere((r) => r.student.id == entry.key).student;
+        sheet.appendRow([
+          TextCellValue(student.fullName),
+          TextCellValue(student.program),
+          TextCellValue(dateFormat.format(day.createdAt)),
+          TextCellValue(entry.value['timeIn'] != null ? timeFormat.format(entry.value['timeIn']!) : '-'),
+          TextCellValue(entry.value['timeOut'] != null ? timeFormat.format(entry.value['timeOut']!) : '-'),
+        ]);
+      }
+
+      final directory = await getApplicationDocumentsDirectory();
+      final fileName = '${day.name.replaceAll(' ', '_')}_attendance.xlsx';
+      final filePath = '${directory.path}/$fileName';
+      
+      final file = File(filePath);
+      final bytes = excel.encode();
+      if (bytes != null) {
+        await file.writeAsBytes(bytes);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Downloaded to $fileName'),
+              backgroundColor: const Color(0xFF10B981),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error downloading: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _showRenameDialog(String currentName) {
