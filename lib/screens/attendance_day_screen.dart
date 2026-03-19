@@ -160,9 +160,15 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
         ]);
       }
 
-      final directory = await getApplicationDocumentsDirectory();
+      String downloadPath;
+      if (Platform.isAndroid) {
+        downloadPath = '/storage/emulated/0/Download';
+      } else {
+        downloadPath = (await getApplicationDocumentsDirectory()).path;
+      }
+      
       final fileName = '${day.name.replaceAll(' ', '_')}_attendance.xlsx';
-      final filePath = '${directory.path}/$fileName';
+      final filePath = '$downloadPath/$fileName';
       
       final file = File(filePath);
       final bytes = excel.encode();
@@ -172,7 +178,7 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Downloaded to $fileName'),
+              content: Text('Downloaded to Downloads/$fileName'),
               backgroundColor: const Color(0xFF10B981),
             ),
           );
