@@ -159,7 +159,7 @@ class _AuthGateState extends State<AuthGate> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Image.asset('icon.png', height: 45),
+                            Image.asset('assets/icon.png', height: 45),
                             const SizedBox(width: 12),
                             Container(
                               height: 45,
