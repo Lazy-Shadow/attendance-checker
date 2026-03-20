@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:excel/excel.dart';
+import 'package:excel/excel.dart' hide Border;
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import '../models/attendance_record.dart';
@@ -18,6 +18,7 @@ class AttendanceDayScreen extends StatefulWidget {
 
 class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
   int _selectedFilter = 0;
+  int _selectedAmPmFilter = 0;
   final _searchController = TextEditingController();
 
   @override
@@ -78,40 +79,49 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
               style: TextStyle(color: Colors.grey[500]),
             ),
             const SizedBox(height: 24),
-            ListTile(
-              leading: const Icon(Icons.download, color: Color(0xFF10B981)),
-              title: const Text('Download as Excel'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _downloadAsExcel(day);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.edit, color: Color(0xFF2563EB)),
-              title: const Text('Rename Event'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _showRenameDialog(day.name);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.clear_all, color: Colors.orange),
-              title: const Text('Clear All Records'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _confirmClearRecords();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text(
-                'Delete Event',
-                style: TextStyle(color: Colors.red),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.download, color: Color(0xFF10B981)),
+                      title: const Text('Download as Excel'),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _downloadAsExcel(day);
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.edit, color: Color(0xFF2563EB)),
+                      title: const Text('Rename Event'),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _showRenameDialog(day.name);
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.clear_all, color: Colors.orange),
+                      title: const Text('Clear All Records'),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _confirmClearRecords();
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.delete, color: Colors.red),
+                      title: const Text(
+                        'Delete Event',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _confirmDeleteDay(day.name);
+                      },
+                    ),
+                  ],
+                ),
               ),
-              onTap: () {
-                Navigator.pop(ctx);
-                _confirmDeleteDay(day.name);
-              },
             ),
           ],
         ),
@@ -126,23 +136,47 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
 
       sheet.appendRow([
         TextCellValue('Name'),
-        TextCellValue('Program And Year'),
+        TextCellValue('Program'),
         TextCellValue('Date'),
-        TextCellValue('Time in'),
-        TextCellValue('Timeout'),
+        TextCellValue('Time In (AM)'),
+        TextCellValue('Time Out (AM)'),
+        TextCellValue('Time In (PM)'),
+        TextCellValue('Time Out (PM)'),
       ]);
 
-      final Map<String, Map<String, DateTime?>> studentAttendance = {};
+      sheet.setColumnWidth(0, 20);
+      sheet.setColumnWidth(1, 15);
+      sheet.setColumnWidth(2, 15);
+      sheet.setColumnWidth(3, 15);
+      sheet.setColumnWidth(4, 15);
+      sheet.setColumnWidth(5, 15);
+      sheet.setColumnWidth(6, 15);
+
+      final Map<String, Map<String, List<DateTime>>> studentAttendance = {};
 
       for (final record in day.records) {
         final key = record.student.id;
         if (!studentAttendance.containsKey(key)) {
-          studentAttendance[key] = {'timeIn': null, 'timeOut': null};
+          studentAttendance[key] = {
+            'timeInAm': [],
+            'timeOutAm': [],
+            'timeInPm': [],
+            'timeOutPm': [],
+          };
         }
+        final isAm = record.timestamp.hour < 12;
         if (record.type == AttendanceType.timeIn) {
-          studentAttendance[key]!['timeIn'] = record.timestamp;
+          if (isAm) {
+            studentAttendance[key]!['timeInAm']!.add(record.timestamp);
+          } else {
+            studentAttendance[key]!['timeInPm']!.add(record.timestamp);
+          }
         } else {
-          studentAttendance[key]!['timeOut'] = record.timestamp;
+          if (isAm) {
+            studentAttendance[key]!['timeOutAm']!.add(record.timestamp);
+          } else {
+            studentAttendance[key]!['timeOutPm']!.add(record.timestamp);
+          }
         }
       }
 
@@ -153,21 +187,43 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
         final student = day.records
             .firstWhere((r) => r.student.id == entry.key)
             .student;
+        
+        final timeInAmList = entry.value['timeInAm']!;
+        final timeOutAmList = entry.value['timeOutAm']!;
+        final timeInPmList = entry.value['timeInPm']!;
+        final timeOutPmList = entry.value['timeOutPm']!;
+        
+        final timeInAmStr = timeInAmList.isEmpty
+            ? '-'
+            : timeInAmList.map((t) => timeFormat.format(t)).join(', ');
+        final timeOutAmStr = timeOutAmList.isEmpty
+            ? '-'
+            : timeOutAmList.map((t) => timeFormat.format(t)).join(', ');
+        final timeInPmStr = timeInPmList.isEmpty
+            ? '-'
+            : timeInPmList.map((t) => timeFormat.format(t)).join(', ');
+        final timeOutPmStr = timeOutPmList.isEmpty
+            ? '-'
+            : timeOutPmList.map((t) => timeFormat.format(t)).join(', ');
+
         sheet.appendRow([
           TextCellValue(student.fullName),
           TextCellValue(student.program),
           TextCellValue(dateFormat.format(day.createdAt)),
-          TextCellValue(
-            entry.value['timeIn'] != null
-                ? timeFormat.format(entry.value['timeIn']!)
-                : '-',
-          ),
-          TextCellValue(
-            entry.value['timeOut'] != null
-                ? timeFormat.format(entry.value['timeOut']!)
-                : '-',
-          ),
+          TextCellValue(timeInAmStr),
+          TextCellValue(timeOutAmStr),
+          TextCellValue(timeInPmStr),
+          TextCellValue(timeOutPmStr),
         ]);
+      }
+
+      final cellStyle = CellStyle(
+        horizontalAlign: HorizontalAlign.Center,
+      );
+      for (var row in sheet.rows) {
+        for (var cell in row) {
+          cell?.cellStyle = cellStyle;
+        }
       }
 
       String downloadPath;
@@ -376,12 +432,19 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
             final nameMatch = r.student.fullName.toLowerCase().contains(
               searchQuery,
             );
+            bool typeMatch = true;
             if (_selectedFilter == 1) {
-              return r.type == AttendanceType.timeIn && nameMatch;
+              typeMatch = r.type == AttendanceType.timeIn;
             } else if (_selectedFilter == 2) {
-              return r.type == AttendanceType.timeOut && nameMatch;
+              typeMatch = r.type == AttendanceType.timeOut;
             }
-            return nameMatch;
+            bool amPmMatch = true;
+            if (_selectedAmPmFilter == 1) {
+              amPmMatch = r.timestamp.hour >= 0 && r.timestamp.hour < 12;
+            } else if (_selectedAmPmFilter == 2) {
+              amPmMatch = r.timestamp.hour >= 12 && r.timestamp.hour < 24;
+            }
+            return nameMatch && typeMatch && amPmMatch;
           }).toList();
 
           return Column(
@@ -427,6 +490,17 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                         _buildFilterButton(0, 'All', Icons.list),
                         _buildFilterButton(1, 'Time In', Icons.login),
                         _buildFilterButton(2, 'Time Out', Icons.logout),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildAmPmFilterButton(0, 'All', Icons.access_time),
+                        const SizedBox(width: 8),
+                        _buildAmPmFilterButton(1, 'AM', null),
+                        const SizedBox(width: 8),
+                        _buildAmPmFilterButton(2, 'PM', null),
                       ],
                     ),
                   ],
@@ -731,6 +805,48 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                   fontSize: 12,
                 ),
                 overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAmPmFilterButton(int index, String label, IconData? icon) {
+    final isSelected = _selectedAmPmFilter == index;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedAmPmFilter = index;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 14,
+                color: isSelected ? const Color(0xFF8B5CF6) : Colors.white70,
+              ),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? const Color(0xFF8B5CF6) : Colors.white,
+                fontWeight: FontWeight.w500,
+                fontSize: 11,
               ),
             ),
           ],

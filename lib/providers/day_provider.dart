@@ -326,20 +326,28 @@ class DayProvider extends ChangeNotifier {
     }
   }
 
-  bool hasTimeIn(String dayId, String studentId) {
+  bool hasTimeIn(String dayId, String studentId, {bool? isAm}) {
     final dayIndex = _days.indexWhere((d) => d.id == dayId);
     if (dayIndex == -1) return false;
-    return _days[dayIndex].records.any(
-      (r) => r.student.id == studentId && r.type == AttendanceType.timeIn,
-    );
+    return _days[dayIndex].records.any((r) {
+      if (r.student.id != studentId || r.type != AttendanceType.timeIn) return false;
+      if (isAm == null) return true;
+      final recordHour = r.timestamp.hour;
+      final isRecordAm = recordHour < 12;
+      return isRecordAm == isAm;
+    });
   }
 
-  bool hasTimeOut(String dayId, String studentId) {
+  bool hasTimeOut(String dayId, String studentId, {bool? isAm}) {
     final dayIndex = _days.indexWhere((d) => d.id == dayId);
     if (dayIndex == -1) return false;
-    return _days[dayIndex].records.any(
-      (r) => r.student.id == studentId && r.type == AttendanceType.timeOut,
-    );
+    return _days[dayIndex].records.any((r) {
+      if (r.student.id != studentId || r.type != AttendanceType.timeOut) return false;
+      if (isAm == null) return true;
+      final recordHour = r.timestamp.hour;
+      final isRecordAm = recordHour < 12;
+      return isRecordAm == isAm;
+    });
   }
 
   Future<void> addRecordToDay(String dayId, AttendanceRecord record) async {

@@ -22,6 +22,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
   bool _isProcessing = false;
   final TextEditingController _manualInputController = TextEditingController();
   bool _showManualInput = false;
+  bool _isAmSelected = true;
 
   bool get _isWeb => kIsWeb;
 
@@ -84,7 +85,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
           backgroundColor: Colors.red,
         ),
       );
-      _resetScanner();
     }
   }
 
@@ -118,21 +118,35 @@ class _ScannerScreenState extends State<ScannerScreen> {
     }
 
     if (type == AttendanceType.timeIn &&
-        dayProvider.hasTimeIn(dayProvider.selectedDayId!, student.id)) {
-      _showWarningSnackBar('${student.fullName} already timed in');
+        dayProvider.hasTimeIn(dayProvider.selectedDayId!, student.id, isAm: _isAmSelected)) {
+      _showWarningSnackBar('${student.fullName} already timed in for ${_isAmSelected ? "AM" : "PM"}');
       return;
     }
 
     if (type == AttendanceType.timeOut &&
-        dayProvider.hasTimeOut(dayProvider.selectedDayId!, student.id)) {
-      _showWarningSnackBar('${student.fullName} already timed out');
+        dayProvider.hasTimeOut(dayProvider.selectedDayId!, student.id, isAm: _isAmSelected)) {
+      _showWarningSnackBar('${student.fullName} already timed out for ${_isAmSelected ? "AM" : "PM"}');
       return;
     }
 
+    final now = DateTime.now();
+    int hour = now.hour;
+    if (_isAmSelected) {
+      if (hour >= 12) {
+        hour = hour - 12;
+      }
+      if (hour == 0) hour = 12;
+    } else {
+      if (hour < 12) {
+        hour = hour + 12;
+      }
+    }
+    final adjustedTime = DateTime(now.year, now.month, now.day, hour, now.minute, now.second);
+
     final record = AttendanceRecord(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: now.millisecondsSinceEpoch.toString(),
       student: student,
-      timestamp: DateTime.now(),
+      timestamp: adjustedTime,
       type: type,
     );
 
@@ -243,6 +257,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
       body: Column(
         children: [
           _buildDaySelector(),
+          _buildAmPmSelector(),
           Container(
             margin: const EdgeInsets.all(16),
             height: _isWeb ? 0 : MediaQuery.of(context).size.height * 0.25,
@@ -304,6 +319,82 @@ class _ScannerScreenState extends State<ScannerScreen> {
     );
   }
 
+  Widget _buildAmPmSelector() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: Colors.white,
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _isAmSelected = true;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _isAmSelected
+                      ? const Color(0xFF8B5CF6)
+                      : const Color(0xFFF5F7FA),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _isAmSelected
+                        ? const Color(0xFF8B5CF6)
+                        : Colors.grey[300]!,
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    'AM',
+                    style: TextStyle(
+                      color: _isAmSelected ? Colors.white : Colors.grey[600],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _isAmSelected = false;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: !_isAmSelected
+                      ? const Color(0xFF8B5CF6)
+                      : const Color(0xFFF5F7FA),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: !_isAmSelected
+                        ? const Color(0xFF8B5CF6)
+                        : Colors.grey[300]!,
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    'PM',
+                    style: TextStyle(
+                      color: !_isAmSelected ? Colors.white : Colors.grey[600],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildScanner() {
     return Container(
       decoration: BoxDecoration(
@@ -348,10 +439,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   ),
                   child: Text(
                     _selectedFilter == 0
-                        ? 'Recording: Time In'
+                        ? 'Recording: Time In (${_isAmSelected ? "AM" : "PM"})'
                         : _selectedFilter == 1
-                        ? 'Recording: Time In'
-                        : 'Recording: Time Out',
+                        ? 'Recording: Time In (${_isAmSelected ? "AM" : "PM"})'
+                        : 'Recording: Time Out (${_isAmSelected ? "AM" : "PM"})',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14,
@@ -482,6 +573,12 @@ class _ScannerScreenState extends State<ScannerScreen> {
           filteredRecords = day.records;
         }
 
+        filteredRecords = filteredRecords
+            .where((r) => _isAmSelected
+                ? r.timestamp.hour < 12
+                : r.timestamp.hour >= 12)
+            .toList();
+
         if (filteredRecords.isEmpty) {
           return Center(
             child: Column(
@@ -491,8 +588,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 const SizedBox(height: 16),
                 Text(
                   _selectedFilter == 0
-                      ? 'No records yet'
-                      : 'No ${_selectedFilter == 1 ? "Time In" : "Time Out"} records',
+                      ? 'No ${_isAmSelected ? "AM" : "PM"} records yet'
+                      : 'No ${_isAmSelected ? "AM" : "PM"} ${_selectedFilter == 1 ? "Time In" : "Time Out"} records',
                   style: TextStyle(color: Colors.grey[500], fontSize: 16),
                 ),
               ],
@@ -634,4 +731,4 @@ class _ScannerScreenState extends State<ScannerScreen> {
       ),
     );
   }
-}
+  }
