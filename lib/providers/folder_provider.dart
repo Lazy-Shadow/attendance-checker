@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -45,6 +46,8 @@ class UploadedFile {
 class Folder {
   final String id;
   final String name;
+  final String ownerId;
+  final List<String> sharedWith;
   final DateTime createdAt;
   final List<Student> students;
   final List<UploadedFile> files;
@@ -52,17 +55,22 @@ class Folder {
   Folder({
     required this.id,
     required this.name,
+    required this.ownerId,
+    List<String>? sharedWith,
     required this.createdAt,
     List<Student>? students,
     List<UploadedFile>? files,
-  })  : students = students ?? [],
-        files = files ?? [];
+  }) : sharedWith = sharedWith ?? [],
+       students = students ?? [],
+       files = files ?? [];
 
   String get fileName => name.replaceAll(' ', '_');
 
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
+    'ownerId': ownerId,
+    'sharedWith': sharedWith,
     'createdAt': createdAt.toIso8601String(),
     'students': students.map((s) => s.toJsonString()).toList(),
     'files': files.map((f) => f.toJson()).toList(),
@@ -72,9 +80,36 @@ class Folder {
     return Folder(
       id: json['id'],
       name: json['name'],
+      ownerId: json['ownerId'] ?? '',
+      sharedWith: (json['sharedWith'] as List?)?.cast<String>() ?? [],
       createdAt: DateTime.parse(json['createdAt']),
-      students: (json['students'] as List?)?.map((s) => Student.fromJsonString(s)).toList() ?? [],
-      files: (json['files'] as List?)?.map((f) => UploadedFile.fromJson(f)).toList() ?? [],
+      students:
+          (json['students'] as List?)
+              ?.map((s) => Student.fromJsonString(s))
+              .toList() ??
+          [],
+      files:
+          (json['files'] as List?)
+              ?.map((f) => UploadedFile.fromJson(f))
+              .toList() ??
+          [],
+    );
+  }
+
+  Folder copyWith({
+    String? name,
+    List<String>? sharedWith,
+    List<Student>? students,
+    List<UploadedFile>? files,
+  }) {
+    return Folder(
+      id: id,
+      name: name ?? this.name,
+      ownerId: ownerId,
+      sharedWith: sharedWith ?? this.sharedWith,
+      createdAt: createdAt,
+      students: students ?? this.students,
+      files: files ?? this.files,
     );
   }
 }
@@ -82,6 +117,7 @@ class Folder {
 class FolderProvider extends ChangeNotifier {
   List<Folder> _folders = [];
   String? _selectedId;
+  String? _currentUserId;
 
   List<Folder> get folders => _folders;
   String? get selectedId => _selectedId;
@@ -94,56 +130,127 @@ class FolderProvider extends ChangeNotifier {
     }
   }
 
-  FolderProvider() { _load(); }
+  FolderProvider() {
+    _loadLocal();
+  }
 
-  Future<void> _load() async {
+  void setUserId(String userId) {
+    _currentUserId = userId;
+    _loadFromFirestore();
+  }
+
+  Future<void> _loadLocal() async {
     final prefs = await SharedPreferences.getInstance();
     final data = prefs.getString('folders');
     if (data != null) {
-      _folders = (jsonDecode(data) as List).map((e) => Folder.fromJson(e)).toList();
+      _folders = (jsonDecode(data) as List)
+          .map((e) => Folder.fromJson(e))
+          .toList();
       if (_folders.isNotEmpty) _selectedId = _folders.first.id;
       notifyListeners();
     }
   }
 
-  Future<void> _save() async {
+  Future<void> _loadFromFirestore() async {
+    if (_currentUserId == null) return;
+
+    try {
+      final ownedSnapshot = await FirebaseFirestore.instance
+          .collection('folders')
+          .where('ownerId', isEqualTo: _currentUserId)
+          .get();
+
+      final sharedSnapshot = await FirebaseFirestore.instance
+          .collection('folders')
+          .where('sharedWith', arrayContains: _currentUserId)
+          .get();
+
+      final allFolders = [
+        ...ownedSnapshot.docs.map((doc) => Folder.fromJson(doc.data())),
+        ...sharedSnapshot.docs.map((doc) => Folder.fromJson(doc.data())),
+      ];
+
+      _folders = allFolders;
+      _saveLocal();
+      if (_folders.isNotEmpty && _selectedId == null) {
+        _selectedId = _folders.first.id;
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading from Firestore: $e');
+    }
+  }
+
+  Future<void> _saveLocal() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('folders', jsonEncode(_folders.map((f) => f.toJson()).toList()));
+    await prefs.setString(
+      'folders',
+      jsonEncode(_folders.map((f) => f.toJson()).toList()),
+    );
+  }
+
+  Future<void> _saveToFirestore(Folder folder) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('folders')
+          .doc(folder.id)
+          .set(folder.toJson());
+    } catch (e) {
+      debugPrint('Error saving to Firestore: $e');
+    }
+  }
+
+  Future<void> _deleteFromFirestore(String folderId) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('folders')
+          .doc(folderId)
+          .delete();
+    } catch (e) {
+      debugPrint('Error deleting from Firestore: $e');
+    }
   }
 
   void create(String name) {
+    if (_currentUserId == null) return;
+
     final folder = Folder(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,
+      ownerId: _currentUserId!,
       createdAt: DateTime.now(),
     );
     _folders.add(folder);
     _selectedId ??= folder.id;
-    _save();
+    _saveLocal();
+    _saveToFirestore(folder);
     notifyListeners();
   }
 
   void rename(String id, String newName) {
     final i = _folders.indexWhere((f) => f.id == id);
     if (i != -1) {
-      _folders[i] = Folder(
-        id: id,
-        name: newName,
-        createdAt: _folders[i].createdAt,
-        students: _folders[i].students,
-        files: _folders[i].files,
-      );
-      _save();
+      _folders[i] = _folders[i].copyWith(name: newName);
+      _saveLocal();
+      _saveToFirestore(_folders[i]);
       notifyListeners();
     }
   }
 
   void delete(String id) {
+    final folder = _folders.firstWhere(
+      (f) => f.id == id,
+      orElse: () =>
+          Folder(id: '', name: '', ownerId: '', createdAt: DateTime.now()),
+    );
+    if (folder.ownerId != _currentUserId) return;
+
     _folders.removeWhere((f) => f.id == id);
     if (_selectedId == id) {
       _selectedId = _folders.isNotEmpty ? _folders.first.id : null;
     }
-    _save();
+    _saveLocal();
+    _deleteFromFirestore(id);
     notifyListeners();
   }
 
@@ -155,8 +262,11 @@ class FolderProvider extends ChangeNotifier {
   void addStudent(String folderId, Student student) {
     final i = _folders.indexWhere((f) => f.id == folderId);
     if (i != -1) {
-      _folders[i].students.add(student);
-      _save();
+      final updatedStudents = List<Student>.from(_folders[i].students)
+        ..add(student);
+      _folders[i] = _folders[i].copyWith(students: updatedStudents);
+      _saveLocal();
+      _saveToFirestore(_folders[i]);
       notifyListeners();
     }
   }
@@ -164,8 +274,11 @@ class FolderProvider extends ChangeNotifier {
   void addFile(String folderId, UploadedFile file) {
     final i = _folders.indexWhere((f) => f.id == folderId);
     if (i != -1) {
-      _folders[i].files.add(file);
-      _save();
+      final updatedFiles = List<UploadedFile>.from(_folders[i].files)
+        ..add(file);
+      _folders[i] = _folders[i].copyWith(files: updatedFiles);
+      _saveLocal();
+      _saveToFirestore(_folders[i]);
       notifyListeners();
     }
   }
@@ -173,8 +286,12 @@ class FolderProvider extends ChangeNotifier {
   void removeStudent(String folderId, String studentId) {
     final i = _folders.indexWhere((f) => f.id == folderId);
     if (i != -1) {
-      _folders[i].students.removeWhere((s) => s.id == studentId);
-      _save();
+      final updatedStudents = _folders[i].students
+          .where((s) => s.id != studentId)
+          .toList();
+      _folders[i] = _folders[i].copyWith(students: updatedStudents);
+      _saveLocal();
+      _saveToFirestore(_folders[i]);
       notifyListeners();
     }
   }
@@ -182,10 +299,15 @@ class FolderProvider extends ChangeNotifier {
   void updateStudent(String folderId, Student updatedStudent) {
     final i = _folders.indexWhere((f) => f.id == folderId);
     if (i != -1) {
-      final studentIndex = _folders[i].students.indexWhere((s) => s.id == updatedStudent.id);
+      final studentIndex = _folders[i].students.indexWhere(
+        (s) => s.id == updatedStudent.id,
+      );
       if (studentIndex != -1) {
-        _folders[i].students[studentIndex] = updatedStudent;
-        _save();
+        final updatedStudents = List<Student>.from(_folders[i].students);
+        updatedStudents[studentIndex] = updatedStudent;
+        _folders[i] = _folders[i].copyWith(students: updatedStudents);
+        _saveLocal();
+        _saveToFirestore(_folders[i]);
         notifyListeners();
       }
     }
@@ -194,15 +316,57 @@ class FolderProvider extends ChangeNotifier {
   void removeFile(String folderId, String fileId) {
     final i = _folders.indexWhere((f) => f.id == folderId);
     if (i != -1) {
-      final file = _folders[i].files.firstWhere((f) => f.id == fileId, orElse: () => UploadedFile(id: '', name: '', path: '', type: '', uploadedAt: DateTime.now()));
+      final file = _folders[i].files.firstWhere(
+        (f) => f.id == fileId,
+        orElse: () => UploadedFile(
+          id: '',
+          name: '',
+          path: '',
+          type: '',
+          uploadedAt: DateTime.now(),
+        ),
+      );
       if (file.path.isNotEmpty) {
         final fileToDelete = File(file.path);
         if (fileToDelete.existsSync()) {
           fileToDelete.deleteSync();
         }
       }
-      _folders[i].files.removeWhere((f) => f.id == fileId);
-      _save();
+      final updatedFiles = _folders[i].files
+          .where((f) => f.id != fileId)
+          .toList();
+      _folders[i] = _folders[i].copyWith(files: updatedFiles);
+      _saveLocal();
+      _saveToFirestore(_folders[i]);
+      notifyListeners();
+    }
+  }
+
+  Future<void> shareFolder(String folderId, String userId) async {
+    final i = _folders.indexWhere((f) => f.id == folderId);
+    if (i != -1) {
+      final folder = _folders[i];
+      if (!folder.sharedWith.contains(userId)) {
+        final updatedSharedWith = List<String>.from(folder.sharedWith)
+          ..add(userId);
+        _folders[i] = folder.copyWith(sharedWith: updatedSharedWith);
+        _saveLocal();
+        _saveToFirestore(_folders[i]);
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> unshareFolder(String folderId, String userId) async {
+    final i = _folders.indexWhere((f) => f.id == folderId);
+    if (i != -1) {
+      final folder = _folders[i];
+      final updatedSharedWith = folder.sharedWith
+          .where((id) => id != userId)
+          .toList();
+      _folders[i] = folder.copyWith(sharedWith: updatedSharedWith);
+      _saveLocal();
+      _saveToFirestore(_folders[i]);
       notifyListeners();
     }
   }
@@ -227,11 +391,17 @@ class FolderProvider extends ChangeNotifier {
           data: student.studentNumber,
           version: QrVersions.auto,
         ).toImage(300);
-        final bytes = (await image.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List();
-        await File('${folderDir.path}/${student.fileName}.png').writeAsBytes(bytes);
+        final bytes = (await image.toByteData(
+          format: ui.ImageByteFormat.png,
+        ))!.buffer.asUint8List();
+        await File(
+          '${folderDir.path}/${student.fileName}.png',
+        ).writeAsBytes(bytes);
       }
 
-      final manifest = folder.students.map((s) => '${s.fullName}\n${s.program} ${s.year}').join('\n---\n');
+      final manifest = folder.students
+          .map((s) => '${s.fullName}\n${s.program} ${s.year}')
+          .join('\n---\n');
       await File('${folderDir.path}/manifest.txt').writeAsString(manifest);
 
       if (context.mounted) {

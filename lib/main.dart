@@ -207,6 +207,10 @@ class _AuthGateState extends State<AuthGate> {
                 );
               }
 
+              final userId = snapshot.data!.uid;
+              context.read<AttendanceProvider>().setUserId(userId);
+              context.read<FolderProvider>().setUserId(userId);
+
               if (!docSnapshot.hasData || !docSnapshot.data!.exists) {
                 return RoleSelectionScreen(onRoleSelected: _onRoleSelected);
               }
