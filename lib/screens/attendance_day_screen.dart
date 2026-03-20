@@ -35,7 +35,7 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
       if (dayProvider.days.isEmpty) return;
       day = dayProvider.days.first;
     }
-    
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -71,10 +71,7 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
             const SizedBox(height: 12),
             Text(
               day.name,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             Text(
               '${day.records.length} records',
@@ -107,7 +104,10 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text('Delete Event', style: TextStyle(color: Colors.red)),
+              title: const Text(
+                'Delete Event',
+                style: TextStyle(color: Colors.red),
+              ),
               onTap: () {
                 Navigator.pop(ctx);
                 _confirmDeleteDay(day.name);
@@ -123,7 +123,7 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
     try {
       final excel = Excel.createExcel();
       final sheet = excel['Attendance'];
-      
+
       sheet.appendRow([
         TextCellValue('Name'),
         TextCellValue('Program And Year'),
@@ -133,7 +133,7 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
       ]);
 
       final Map<String, Map<String, DateTime?>> studentAttendance = {};
-      
+
       for (final record in day.records) {
         final key = record.student.id;
         if (!studentAttendance.containsKey(key)) {
@@ -150,13 +150,23 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
       final timeFormat = DateFormat('h:mm a');
 
       for (final entry in studentAttendance.entries) {
-        final student = day.records.firstWhere((r) => r.student.id == entry.key).student;
+        final student = day.records
+            .firstWhere((r) => r.student.id == entry.key)
+            .student;
         sheet.appendRow([
           TextCellValue(student.fullName),
           TextCellValue(student.program),
           TextCellValue(dateFormat.format(day.createdAt)),
-          TextCellValue(entry.value['timeIn'] != null ? timeFormat.format(entry.value['timeIn']!) : '-'),
-          TextCellValue(entry.value['timeOut'] != null ? timeFormat.format(entry.value['timeOut']!) : '-'),
+          TextCellValue(
+            entry.value['timeIn'] != null
+                ? timeFormat.format(entry.value['timeIn']!)
+                : '-',
+          ),
+          TextCellValue(
+            entry.value['timeOut'] != null
+                ? timeFormat.format(entry.value['timeOut']!)
+                : '-',
+          ),
         ]);
       }
 
@@ -166,15 +176,15 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
       } else {
         downloadPath = (await getApplicationDocumentsDirectory()).path;
       }
-      
+
       final fileName = '${day.name.replaceAll(' ', '_')}_attendance.xlsx';
       final filePath = '$downloadPath/$fileName';
-      
+
       final file = File(filePath);
       final bytes = excel.encode();
       if (bytes != null) {
         await file.writeAsBytes(bytes);
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -213,9 +223,7 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
           controller: controller,
           decoration: InputDecoration(
             labelText: 'Event',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
           autofocus: true,
         ),
@@ -227,7 +235,10 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
           ElevatedButton(
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
-                context.read<DayProvider>().rename(widget.dayId, controller.text.trim());
+                context.read<DayProvider>().renameDay(
+                  widget.dayId,
+                  controller.text.trim(),
+                );
                 Navigator.pop(ctx);
               }
             },
@@ -248,7 +259,9 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Clear All Records?'),
-        content: const Text('This will remove all attendance records for this day.'),
+        content: const Text(
+          'This will remove all attendance records for this day.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -256,7 +269,7 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              context.read<DayProvider>().clearRecords(widget.dayId);
+              context.read<DayProvider>().clearDayRecords(widget.dayId);
               Navigator.pop(ctx);
             },
             style: ElevatedButton.styleFrom(
@@ -284,7 +297,7 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              context.read<DayProvider>().delete(widget.dayId);
+              context.read<DayProvider>().deleteDay(widget.dayId);
               Navigator.pop(ctx);
               Navigator.pop(context);
             },
@@ -331,7 +344,8 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
         builder: (context, dayProvider, child) {
           final day = dayProvider.days.firstWhere(
             (d) => d.id == widget.dayId,
-            orElse: () => Day(id: '', name: '', createdAt: DateTime.now(), records: []),
+            orElse: () =>
+                Day(id: '', name: '', createdAt: DateTime.now(), records: []),
           );
 
           if (day.records.isEmpty) {
@@ -343,10 +357,7 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                   const SizedBox(height: 16),
                   Text(
                     'No attendance records',
-                    style: TextStyle(
-                      color: Colors.grey[500],
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(color: Colors.grey[500], fontSize: 16),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -360,9 +371,11 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
 
           List<AttendanceRecord> filteredRecords;
           final searchQuery = _searchController.text.toLowerCase();
-          
+
           filteredRecords = day.records.where((r) {
-            final nameMatch = r.student.fullName.toLowerCase().contains(searchQuery);
+            final nameMatch = r.student.fullName.toLowerCase().contains(
+              searchQuery,
+            );
             if (_selectedFilter == 1) {
               return r.type == AttendanceType.timeIn && nameMatch;
             } else if (_selectedFilter == 2) {
@@ -388,14 +401,20 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                       controller: _searchController,
                       decoration: InputDecoration(
                         hintText: 'Search by name',
-                        prefixIcon: const Icon(Icons.search, color: Colors.white70),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: Colors.white70,
+                        ),
                         filled: true,
                         fillColor: Colors.white.withValues(alpha: 0.2),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         hintStyle: const TextStyle(color: Colors.white70),
                       ),
                       style: const TextStyle(color: Colors.white),
@@ -420,11 +439,11 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      _selectedFilter == 0 
+                      _selectedFilter == 0
                           ? 'All Records'
-                          : _selectedFilter == 1 
-                              ? 'Time In Records'
-                              : 'Time Out Records',
+                          : _selectedFilter == 1
+                          ? 'Time In Records'
+                          : 'Time Out Records',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -443,7 +462,11 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                 child: filteredRecords.isEmpty
                     ? Center(
                         child: Text(
-                          'No ${_selectedFilter == 1 ? "Time In" : _selectedFilter == 2 ? "Time Out" : ""} records',
+                          'No ${_selectedFilter == 1
+                              ? "Time In"
+                              : _selectedFilter == 2
+                              ? "Time Out"
+                              : ""} records',
                           style: TextStyle(color: Colors.grey[500]),
                         ),
                       )
@@ -473,7 +496,9 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                                   Container(
                                     width: 6,
                                     decoration: BoxDecoration(
-                                      color: isTimeIn ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                      color: isTimeIn
+                                          ? const Color(0xFF10B981)
+                                          : const Color(0xFFEF4444),
                                       borderRadius: const BorderRadius.only(
                                         topLeft: Radius.circular(16),
                                         bottomLeft: Radius.circular(16),
@@ -490,19 +515,29 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                                             height: 50,
                                             decoration: BoxDecoration(
                                               color: isTimeIn
-                                                  ? const Color(0xFF10B981).withValues(alpha: 0.1)
-                                                  : const Color(0xFFEF4444).withValues(alpha: 0.1),
-                                              borderRadius: BorderRadius.circular(12),
+                                                  ? const Color(
+                                                      0xFF10B981,
+                                                    ).withValues(alpha: 0.1)
+                                                  : const Color(
+                                                      0xFFEF4444,
+                                                    ).withValues(alpha: 0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                             ),
                                             child: Icon(
-                                              isTimeIn ? Icons.login : Icons.logout,
-                                              color: isTimeIn ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                              isTimeIn
+                                                  ? Icons.login
+                                                  : Icons.logout,
+                                              color: isTimeIn
+                                                  ? const Color(0xFF10B981)
+                                                  : const Color(0xFFEF4444),
                                             ),
                                           ),
                                           const SizedBox(width: 16),
-                                            Expanded(
+                                          Expanded(
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
                                                 Text(
                                                   record.student.fullName,
@@ -516,19 +551,34 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                                                 Row(
                                                   children: [
                                                     Container(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 8,
+                                                            vertical: 2,
+                                                          ),
                                                       decoration: BoxDecoration(
-                                                        color: const Color(0xFFF3F4F6),
-                                                        borderRadius: BorderRadius.circular(4),
+                                                        color: const Color(
+                                                          0xFFF3F4F6,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              4,
+                                                            ),
                                                       ),
                                                       child: Text(
                                                         record.student.program,
-                                                        style: const TextStyle(fontSize: 12),
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                        ),
                                                       ),
                                                     ),
                                                     const SizedBox(width: 8),
                                                     Text(
-                                                      DateFormat('h:mm a • MMM dd').format(record.timestamp),
+                                                      DateFormat(
+                                                        'h:mm a • MMM dd',
+                                                      ).format(
+                                                        record.timestamp,
+                                                      ),
                                                       style: TextStyle(
                                                         fontSize: 12,
                                                         color: Colors.grey[600],
@@ -540,14 +590,23 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                                             ),
                                           ),
                                           Column(
-                                            crossAxisAlignment: CrossAxisAlignment.end,
-                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
                                             children: [
                                               Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 4,
+                                                    ),
                                                 decoration: BoxDecoration(
-                                                  color: isTimeIn ? const Color(0xFF10B981) : const Color(0xFFEF4444),
-                                                  borderRadius: BorderRadius.circular(12),
+                                                  color: isTimeIn
+                                                      ? const Color(0xFF10B981)
+                                                      : const Color(0xFFEF4444),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
                                                 ),
                                                 child: Text(
                                                   isTimeIn ? 'IN' : 'OUT',
@@ -564,24 +623,51 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                                                   showDialog(
                                                     context: context,
                                                     builder: (ctx) => AlertDialog(
-                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                                      title: const Text('Delete Record?'),
-                                                      content: Text('Are you sure you want to delete ${record.student.fullName}\'s attendance record?'),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              16,
+                                                            ),
+                                                      ),
+                                                      title: const Text(
+                                                        'Delete Record?',
+                                                      ),
+                                                      content: Text(
+                                                        'Are you sure you want to delete ${record.student.fullName}\'s attendance record?',
+                                                      ),
                                                       actions: [
                                                         TextButton(
-                                                          onPressed: () => Navigator.pop(ctx),
-                                                          child: const Text('Cancel'),
+                                                          onPressed: () =>
+                                                              Navigator.pop(
+                                                                ctx,
+                                                              ),
+                                                          child: const Text(
+                                                            'Cancel',
+                                                          ),
                                                         ),
                                                         ElevatedButton(
                                                           onPressed: () {
-                                                            context.read<DayProvider>().deleteRecord(widget.dayId, record.id);
+                                                            context
+                                                                .read<
+                                                                  DayProvider
+                                                                >()
+                                                                .deleteRecord(
+                                                                  widget.dayId,
+                                                                  record.id,
+                                                                );
                                                             Navigator.pop(ctx);
                                                           },
-                                                          style: ElevatedButton.styleFrom(
-                                                            backgroundColor: Colors.red,
-                                                            foregroundColor: Colors.white,
+                                                          style:
+                                                              ElevatedButton.styleFrom(
+                                                                backgroundColor:
+                                                                    Colors.red,
+                                                                foregroundColor:
+                                                                    Colors
+                                                                        .white,
+                                                              ),
+                                                          child: const Text(
+                                                            'Delete',
                                                           ),
-                                                          child: const Text('Delete'),
                                                         ),
                                                       ],
                                                     ),

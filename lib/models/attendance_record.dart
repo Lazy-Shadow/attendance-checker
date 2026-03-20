@@ -23,17 +23,36 @@ class AttendanceRecord {
     'type': type.name,
   });
 
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'student': student.toMap(),
+    'timestamp': timestamp,
+    'type': type.name,
+  };
+
   factory AttendanceRecord.fromJsonString(String jsonString) {
     final map = jsonDecode(jsonString);
+    return AttendanceRecord.fromMap(map);
+  }
+
+  factory AttendanceRecord.fromMap(Map<String, dynamic> map) {
     final typeStr = map['type'] as String?;
-    final attendanceType = typeStr != null && AttendanceType.values.any((e) => e.name == typeStr)
+    final attendanceType =
+        typeStr != null && AttendanceType.values.any((e) => e.name == typeStr)
         ? AttendanceType.values.firstWhere((e) => e.name == typeStr)
         : AttendanceType.timeIn;
     return AttendanceRecord(
       id: map['id'],
-      student: Student.fromJsonString(map['student']),
-      timestamp: DateTime.parse(map['timestamp']),
+      student: Student.fromMap(map['student']),
+      timestamp: map['timestamp'] is DateTime
+          ? map['timestamp']
+          : DateTime.parse(map['timestamp'].toString()),
       type: attendanceType,
     );
   }
+
+  Map<String, dynamic> toJson() => toMap();
+
+  static AttendanceRecord fromJson(Map<String, dynamic> json) =>
+      AttendanceRecord.fromMap(json);
 }

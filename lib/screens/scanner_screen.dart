@@ -46,11 +46,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
   void _onDetect(BarcodeCapture capture) {
     if (_isProcessing) return;
-    
+
     final List<Barcode> barcodes = capture.barcodes;
     for (final barcode in barcodes) {
       if (barcode.format != BarcodeFormat.qrCode) continue;
-      
+
       final String? code = barcode.rawValue;
       if (code != null && code != _lastScannedCode) {
         _lastScannedCode = code;
@@ -64,7 +64,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
   void _processQrCode(String qrData) {
     final folderProvider = context.read<FolderProvider>();
     Student? foundStudent;
-    
+
     for (final folder in folderProvider.folders) {
       for (final student in folder.students) {
         if (student.studentNumber == qrData) {
@@ -74,7 +74,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
       }
       if (foundStudent != null) break;
     }
-    
+
     if (foundStudent != null) {
       _autoRecordAttendance(foundStudent);
     } else {
@@ -101,8 +101,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
   void _autoRecordAttendance(Student student) {
     final dayProvider = context.read<DayProvider>();
-    
-    if (dayProvider.selectedId == null) {
+
+    if (dayProvider.selectedDayId == null) {
       _showErrorSnackBar('Please select an Event first');
       return;
     }
@@ -116,13 +116,15 @@ class _ScannerScreenState extends State<ScannerScreen> {
       type = AttendanceType.timeIn;
       typeText = 'Time In';
     }
-    
-    if (type == AttendanceType.timeIn && dayProvider.hasTimeIn(dayProvider.selectedId!, student.id)) {
+
+    if (type == AttendanceType.timeIn &&
+        dayProvider.hasTimeIn(dayProvider.selectedDayId!, student.id)) {
       _showWarningSnackBar('${student.fullName} already timed in');
       return;
     }
 
-    if (type == AttendanceType.timeOut && dayProvider.hasTimeOut(dayProvider.selectedId!, student.id)) {
+    if (type == AttendanceType.timeOut &&
+        dayProvider.hasTimeOut(dayProvider.selectedDayId!, student.id)) {
       _showWarningSnackBar('${student.fullName} already timed out');
       return;
     }
@@ -134,7 +136,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
       type: type,
     );
 
-    dayProvider.addRecord(dayProvider.selectedId!, record);
+    dayProvider.addRecordToDay(dayProvider.selectedDayId!, record);
 
     final dateFormat = DateFormat('MMMM dd');
     final timeFormat = DateFormat('h:mm a');
@@ -155,7 +157,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
           ],
         ),
-        backgroundColor: type == AttendanceType.timeIn ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+        backgroundColor: type == AttendanceType.timeIn
+            ? const Color(0xFF10B981)
+            : const Color(0xFFEF4444),
         duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -243,7 +247,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
             margin: const EdgeInsets.all(16),
             height: _isWeb ? 0 : MediaQuery.of(context).size.height * 0.25,
             child: _isWeb
-                ? (_showManualInput ? _buildManualInput() : _buildWebPlaceholder())
+                ? (_showManualInput
+                      ? _buildManualInput()
+                      : _buildWebPlaceholder())
                 : _buildScanner(),
           ),
           Padding(
@@ -258,9 +264,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          Expanded(
-            child: _buildRecordsList(),
-          ),
+          Expanded(child: _buildRecordsList()),
         ],
       ),
     );
@@ -280,19 +284,16 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
-                value: dayProvider.selectedId,
+                value: dayProvider.selectedDayId,
                 isExpanded: true,
                 hint: const Text('Select Event'),
                 icon: const Icon(Icons.calendar_today, size: 18),
                 items: dayProvider.days.map((day) {
-                  return DropdownMenuItem(
-                    value: day.id,
-                    child: Text(day.name),
-                  );
+                  return DropdownMenuItem(value: day.id, child: Text(day.name));
                 }).toList(),
                 onChanged: (value) {
                   if (value != null) {
-                    dayProvider.select(value);
+                    dayProvider.selectDay(value);
                   }
                 },
               ),
@@ -319,10 +320,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
         borderRadius: BorderRadius.circular(20),
         child: Stack(
           children: [
-            MobileScanner(
-              controller: _controller,
-              onDetect: _onDetect,
-            ),
+            MobileScanner(controller: _controller, onDetect: _onDetect),
             Positioned.fill(
               child: Container(
                 decoration: BoxDecoration(
@@ -340,17 +338,24 @@ class _ScannerScreenState extends State<ScannerScreen> {
               right: 0,
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    _selectedFilter == 0 ? 'Recording: Time In' : _selectedFilter == 1 ? 'Recording: Time In' : 'Recording: Time Out',
+                    _selectedFilter == 0
+                        ? 'Recording: Time In'
+                        : _selectedFilter == 1
+                        ? 'Recording: Time In'
+                        : 'Recording: Time Out',
                     style: const TextStyle(
-                      color: Colors.white, 
-                      fontSize: 14, 
-                      fontWeight: FontWeight.bold
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
@@ -445,7 +450,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
         final day = dayProvider.selectedDay;
         if (day == null) {
           return Center(
-                child: Column(
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.calendar_today, size: 48, color: Colors.grey[300]),
@@ -466,9 +471,13 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
         List<AttendanceRecord> filteredRecords;
         if (_selectedFilter == 1) {
-          filteredRecords = day.records.where((r) => r.type == AttendanceType.timeIn).toList();
+          filteredRecords = day.records
+              .where((r) => r.type == AttendanceType.timeIn)
+              .toList();
         } else if (_selectedFilter == 2) {
-          filteredRecords = day.records.where((r) => r.type == AttendanceType.timeOut).toList();
+          filteredRecords = day.records
+              .where((r) => r.type == AttendanceType.timeOut)
+              .toList();
         } else {
           filteredRecords = day.records;
         }
@@ -481,7 +490,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 Icon(Icons.inbox, size: 48, color: Colors.grey[300]),
                 const SizedBox(height: 16),
                 Text(
-                  _selectedFilter == 0 ? 'No records yet' : 'No ${_selectedFilter == 1 ? "Time In" : "Time Out"} records',
+                  _selectedFilter == 0
+                      ? 'No records yet'
+                      : 'No ${_selectedFilter == 1 ? "Time In" : "Time Out"} records',
                   style: TextStyle(color: Colors.grey[500], fontSize: 16),
                 ),
               ],
@@ -511,7 +522,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 ],
               ),
               child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 leading: Container(
                   width: 44,
                   height: 44,
@@ -523,7 +537,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   ),
                   child: Icon(
                     isTimeIn ? Icons.login : Icons.logout,
-                    color: isTimeIn ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                    color: isTimeIn
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFFEF4444),
                   ),
                 ),
                 title: Text(
@@ -534,9 +550,14 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   '${record.student.program} • ${isTimeIn ? "Time In" : "Time Out"} • ${DateFormat('h:mm a • MMM dd').format(record.timestamp)}',
                 ),
                 trailing: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: isTimeIn ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                    color: isTimeIn
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFFEF4444),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -564,8 +585,12 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
   Widget _buildFilterButton(int index, String label, IconData icon) {
     final isSelected = _selectedFilter == index;
-    final color = index == 1 ? const Color(0xFF10B981) : index == 2 ? const Color(0xFFEF4444) : const Color(0xFF8B5CF6);
-    
+    final color = index == 1
+        ? const Color(0xFF10B981)
+        : index == 2
+        ? const Color(0xFFEF4444)
+        : const Color(0xFF8B5CF6);
+
     return GestureDetector(
       onTap: () => _onFilterSelected(index),
       child: Container(
@@ -576,7 +601,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
           border: Border.all(color: isSelected ? color : Colors.grey[300]!),
           boxShadow: [
             BoxShadow(
-              color: isSelected ? color.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.05),
+              color: isSelected
+                  ? color.withValues(alpha: 0.3)
+                  : Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),

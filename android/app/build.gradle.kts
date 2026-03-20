@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.attendance_checker"
+    namespace = "com.ramos.attendance_checker"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,7 +20,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.attendance_checker"
+        applicationId = "com.ramos.attendance_checker"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

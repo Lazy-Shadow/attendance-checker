@@ -48,9 +48,7 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
           decoration: InputDecoration(
             labelText: 'Section Name',
             hintText: 'Program And Year',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
           autofocus: true,
         ),
@@ -117,10 +115,7 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                 children: [
                   const Text(
                     'Add Student',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
@@ -164,7 +159,10 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                             const SizedBox(height: 16),
                             TextFormField(
                               controller: _firstNameController,
-                              decoration: _inputDecoration('First Name', Icons.person_outline),
+                              decoration: _inputDecoration(
+                                'First Name',
+                                Icons.person_outline,
+                              ),
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
                                   return 'Please enter first name';
@@ -175,7 +173,10 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                             const SizedBox(height: 12),
                             TextFormField(
                               controller: _lastNameController,
-                              decoration: _inputDecoration('Last Name', Icons.person_outline),
+                              decoration: _inputDecoration(
+                                'Last Name',
+                                Icons.person_outline,
+                              ),
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
                                   return 'Please enter last name';
@@ -186,7 +187,10 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                             const SizedBox(height: 12),
                             TextFormField(
                               controller: _studentNumberController,
-                              decoration: _inputDecoration('Student Number', Icons.numbers),
+                              decoration: _inputDecoration(
+                                'Student Number',
+                                Icons.numbers,
+                              ),
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
                                   return 'Please enter student number';
@@ -197,7 +201,10 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                             const SizedBox(height: 12),
                             TextFormField(
                               controller: _programYearController,
-                              decoration: _inputDecoration('Program & Year', Icons.school),
+                              decoration: _inputDecoration(
+                                'Program & Year',
+                                Icons.school,
+                              ),
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
                                   return 'Please enter program & year';
@@ -276,7 +283,7 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
         MaterialPageRoute(
           builder: (context) => QrDisplayScreen(
             student: student,
-            onDelete: () => fp.removeStudent(fp.selectedId!, student.id),
+            onDelete: () => fp.removeStudent(fp.selectedId ?? '', student.id),
           ),
         ),
       );
@@ -287,9 +294,7 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
     return InputDecoration(
       labelText: label,
       prefixIcon: Icon(icon, color: Colors.grey[600]),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: Colors.grey[300]!),
@@ -369,11 +374,7 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                   ),
                 ],
               ),
-              child: Icon(
-                Icons.folder_open,
-                size: 64,
-                color: Colors.grey[400],
-              ),
+              child: Icon(Icons.folder_open, size: 64, color: Colors.grey[400]),
             ),
             const SizedBox(height: 24),
             Text(
@@ -388,10 +389,7 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
             Text(
               'Create a section folder to start\ngenerating QR codes',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
@@ -401,7 +399,10 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF10B981),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
               ),
             ),
           ],
@@ -432,10 +433,7 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                   ),
                   Text(
                     '${folderProvider.folders.length} folders',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                   ),
                 ],
               ),
@@ -446,7 +444,8 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => FolderSectionScreen(folderId: folder.id),
+                        builder: (context) =>
+                            FolderSectionScreen(folderId: folder.id),
                       ),
                     );
                   },
@@ -471,7 +470,9 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                            color: const Color(
+                              0xFFF59E0B,
+                            ).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Icon(
@@ -504,7 +505,11 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                         IconButton(
                           icon: const Icon(Icons.more_vert),
                           onPressed: () {
-                            _showFolderOptions(folder.id, folder.name, folder.students.length);
+                            _showFolderOptions(
+                              folder.id,
+                              folder.name,
+                              folder.students.length,
+                            );
                           },
                         ),
                       ],
@@ -519,7 +524,11 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
     );
   }
 
-  void _showFolderOptions(String folderId, String folderName, int studentCount) {
+  void _showFolderOptions(
+    String folderId,
+    String folderName,
+    int studentCount,
+  ) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -539,18 +548,11 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            Icon(
-              Icons.folder,
-              size: 48,
-              color: const Color(0xFFF59E0B),
-            ),
+            Icon(Icons.folder, size: 48, color: const Color(0xFFF59E0B)),
             const SizedBox(height: 12),
             Text(
               folderName,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             Text(
               '$studentCount students',
@@ -564,7 +566,9 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                 Navigator.pop(context);
                 final folderProvider = context.read<FolderProvider>();
                 try {
-                  final folder = folderProvider.folders.firstWhere((f) => f.id == folderId);
+                  final folder = folderProvider.folders.firstWhere(
+                    (f) => f.id == folderId,
+                  );
                   folderProvider.downloadFolder(context, folder);
                 } catch (e) {
                   // Folder not found
@@ -578,7 +582,9 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                 Navigator.pop(context);
                 final folderProvider = context.read<FolderProvider>();
                 try {
-                  final folder = folderProvider.folders.firstWhere((f) => f.id == folderId);
+                  final folder = folderProvider.folders.firstWhere(
+                    (f) => f.id == folderId,
+                  );
                   folderProvider.downloadFolder(context, folder);
                 } catch (e) {
                   // Folder not found
@@ -587,7 +593,10 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text('Delete Section', style: TextStyle(color: Colors.red)),
+              title: const Text(
+                'Delete Section',
+                style: TextStyle(color: Colors.red),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _confirmDeleteFolder(folderId, folderName);

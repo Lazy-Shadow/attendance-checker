@@ -19,7 +19,9 @@ class Student {
     required this.program,
   });
 
-  String get fullName => middleName.isEmpty ? '$firstName $lastName' : '$firstName $middleName $lastName';
+  String get fullName => middleName.isEmpty
+      ? '$firstName $lastName'
+      : '$firstName $middleName $lastName';
   String get fileName => id;
   String get info => program;
 
@@ -35,6 +37,20 @@ class Student {
 
   factory Student.fromJsonString(String jsonString) {
     final map = jsonDecode(jsonString);
+    return Student.fromMap(map);
+  }
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'firstName': firstName,
+    'middleName': middleName,
+    'lastName': lastName,
+    'studentNumber': studentNumber,
+    'year': year,
+    'program': program,
+  };
+
+  factory Student.fromMap(Map<String, dynamic> map) {
     return Student(
       id: map['id'],
       firstName: map['firstName'],

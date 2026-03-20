@@ -38,9 +38,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           decoration: InputDecoration(
             labelText: 'Event',
             hintText: 'Event name',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
           autofocus: true,
         ),
@@ -52,7 +50,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ElevatedButton(
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
-                context.read<DayProvider>().create(controller.text.trim());
+                context.read<DayProvider>().createDay(controller.text.trim());
                 Navigator.pop(context);
               }
             },
@@ -138,10 +136,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             Text(
               'Create Attendance Folder To start recording attendance',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
@@ -151,7 +146,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF8B5CF6),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
               ),
             ),
           ],
@@ -180,7 +178,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
             ),
             onChanged: (value) => setState(() {}),
           ),
@@ -198,13 +199,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   itemCount: filteredDays.length,
                   itemBuilder: (context, index) {
                     final day = filteredDays[index];
-                    
+
                     return GestureDetector(
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => AttendanceDayScreen(dayId: day.id),
+                            builder: (context) =>
+                                AttendanceDayScreen(dayId: day.id),
                           ),
                         );
                       },
@@ -228,7 +230,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                               width: 50,
                               height: 50,
                               decoration: BoxDecoration(
-                                color: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
+                                color: const Color(
+                                  0xFF8B5CF6,
+                                ).withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(
@@ -259,10 +263,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                 ],
                               ),
                             ),
-                            Icon(
-                              Icons.chevron_right,
-                              color: Colors.grey[400],
-                            ),
+                            Icon(Icons.chevron_right, color: Colors.grey[400]),
                           ],
                         ),
                       ),
