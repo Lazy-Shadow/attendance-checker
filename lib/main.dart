@@ -36,7 +36,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (context) => AttendanceProvider()),
         ChangeNotifierProvider(create: (context) => FolderProvider()),
-        ChangeNotifierProvider(create: (context) => DayProvider()),
+        ChangeNotifierProvider(create: (context) => AttendanceEventProvider()),
       ],
       child: MaterialApp(
         title: 'Attendance Checker',
@@ -210,6 +210,7 @@ class _AuthGateState extends State<AuthGate> {
               final userId = snapshot.data!.uid;
               context.read<AttendanceProvider>().setUserId(userId);
               context.read<FolderProvider>().setUserId(userId);
+              context.read<AttendanceEventProvider>().setUserId(userId);
 
               if (!docSnapshot.hasData || !docSnapshot.data!.exists) {
                 return RoleSelectionScreen(onRoleSelected: _onRoleSelected);

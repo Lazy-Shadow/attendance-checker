@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:path_provider/path_provider.dart';
@@ -77,12 +76,22 @@ class Folder {
   };
 
   factory Folder.fromJson(Map<String, dynamic> json) {
+    DateTime createdAt;
+    final rawCreatedAt = json['createdAt'];
+    if (rawCreatedAt is String) {
+      createdAt = DateTime.parse(rawCreatedAt);
+    } else if (rawCreatedAt is Timestamp) {
+      createdAt = rawCreatedAt.toDate();
+    } else {
+      createdAt = DateTime.now();
+    }
+
     return Folder(
-      id: json['id'],
-      name: json['name'],
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
       ownerId: json['ownerId'] ?? '',
       sharedWith: (json['sharedWith'] as List?)?.cast<String>() ?? [],
-      createdAt: DateTime.parse(json['createdAt']),
+      createdAt: createdAt,
       students:
           (json['students'] as List?)
               ?.map((s) => Student.fromJsonString(s))
@@ -136,13 +145,13 @@ class FolderProvider extends ChangeNotifier {
 
   void setUserId(String userId) {
     _currentUserId = userId;
-    _loadFromFirestore();
+    _listenToFirestore();
   }
 
   Future<void> _loadLocal() async {
     final prefs = await SharedPreferences.getInstance();
     final data = prefs.getString('folders');
-    if (data != null) {
+    if (data != null && data.isNotEmpty) {
       _folders = (jsonDecode(data) as List)
           .map((e) => Folder.fromJson(e))
           .toList();
@@ -151,34 +160,19 @@ class FolderProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _loadFromFirestore() async {
-    if (_currentUserId == null) return;
-
-    try {
-      final ownedSnapshot = await FirebaseFirestore.instance
-          .collection('folders')
-          .where('ownerId', isEqualTo: _currentUserId)
-          .get();
-
-      final sharedSnapshot = await FirebaseFirestore.instance
-          .collection('folders')
-          .where('sharedWith', arrayContains: _currentUserId)
-          .get();
-
-      final allFolders = [
-        ...ownedSnapshot.docs.map((doc) => Folder.fromJson(doc.data())),
-        ...sharedSnapshot.docs.map((doc) => Folder.fromJson(doc.data())),
-      ];
-
-      _folders = allFolders;
+  void _listenToFirestore() {
+    FirebaseFirestore.instance.collection('folders').snapshots().listen((snapshot) {
+      _folders = snapshot.docs.map((doc) => Folder.fromJson(doc.data())).toList();
+      _folders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       _saveLocal();
       if (_folders.isNotEmpty && _selectedId == null) {
         _selectedId = _folders.first.id;
       }
       notifyListeners();
-    } catch (e) {
-      debugPrint('Error loading from Firestore: $e');
-    }
+    }, onError: (e) {
+      debugPrint('Error listening to Firestore: $e');
+      _loadLocal();
+    });
   }
 
   Future<void> _saveLocal() async {

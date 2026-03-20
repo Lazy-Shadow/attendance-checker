@@ -61,9 +61,10 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyC7tE5eYwc4m-whx27E5M6d3mCnkLb0pa4',
-    appId: '1:661475579565:android:fae0355b07553057cf5824',
+    appId: '1:661475579565:android:fdd8860772602ae1cf5824',
     messagingSenderId: '661475579565',
     projectId: 'attendance-checker-9f22b',
     storageBucket: 'attendance-checker-9f22b.firebasestorage.app',
   );
+
 }

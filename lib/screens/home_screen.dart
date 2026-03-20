@@ -198,12 +198,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       0,
                       (sum, folder) => sum + folder.students.length,
                     );
-                    return Consumer<DayProvider>(
-                      builder: (context, dayProvider, child) {
-                        final totalDays = dayProvider.days.length;
-                        final totalRecords = dayProvider.days.fold<int>(
+                    return                     Consumer<AttendanceEventProvider>(
+                      builder: (context, eventProvider, child) {
+                        final totalEvents = eventProvider.events.length;
+                        final totalRecords = eventProvider.events.fold<int>(
                           0,
-                          (sum, day) => sum + day.records.length,
+                          (sum, event) => sum + event.records.length,
                         );
                         return Column(
                           children: [
@@ -234,8 +234,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Expanded(
                                   child: _buildStatCard(
                                     icon: Icons.calendar_today,
-                                    value: totalDays.toString(),
-                                    label: 'Days',
+                                    value: totalEvents.toString(),
+                                    label: 'Events',
                                     color: const Color(0xFF8B5CF6),
                                   ),
                                 ),

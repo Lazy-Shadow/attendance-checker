@@ -1,0 +1,82 @@
+{
+  "project_info": {
+    "project_number": "661475579565",
+    "project_id": "attendance-checker-9f22b",
+    "storage_bucket": "attendance-checker-9f22b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:661475579565:android:fae0355b07553057cf5824",
+        "android_client_info": {
+          "package_name": "com.example.attendance_checker"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "661475579565-a7qngl83hj6keptsbidn2kireelskb2c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7tE5eYwc4m-whx27E5M6d3mCnkLb0pa4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "661475579565-a7qngl83hj6keptsbidn2kireelskb2c.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "661475579565-3jf96r0orjnd7u7tt05e6seauo65i20v.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.attendanceChecker"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:661475579565:android:fdd8860772602ae1cf5824",
+        "android_client_info": {
+          "package_name": "com.ramos.attendance_checker"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "661475579565-a7qngl83hj6keptsbidn2kireelskb2c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7tE5eYwc4m-whx27E5M6d3mCnkLb0pa4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "661475579565-a7qngl83hj6keptsbidn2kireelskb2c.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "661475579565-3jf96r0orjnd7u7tt05e6seauo65i20v.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.attendanceChecker"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

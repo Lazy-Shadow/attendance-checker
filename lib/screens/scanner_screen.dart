@@ -100,9 +100,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
   }
 
   void _autoRecordAttendance(Student student) {
-    final dayProvider = context.read<DayProvider>();
+    final eventProvider = context.read<AttendanceEventProvider>();
 
-    if (dayProvider.selectedDayId == null) {
+    if (eventProvider.selectedEventId == null) {
       _showErrorSnackBar('Please select an Event first');
       return;
     }
@@ -118,13 +118,13 @@ class _ScannerScreenState extends State<ScannerScreen> {
     }
 
     if (type == AttendanceType.timeIn &&
-        dayProvider.hasTimeIn(dayProvider.selectedDayId!, student.id, isAm: _isAmSelected)) {
+        eventProvider.hasTimeIn(eventProvider.selectedEventId!, student.id, isAm: _isAmSelected)) {
       _showWarningSnackBar('${student.fullName} already timed in for ${_isAmSelected ? "AM" : "PM"}');
       return;
     }
 
     if (type == AttendanceType.timeOut &&
-        dayProvider.hasTimeOut(dayProvider.selectedDayId!, student.id, isAm: _isAmSelected)) {
+        eventProvider.hasTimeOut(eventProvider.selectedEventId!, student.id, isAm: _isAmSelected)) {
       _showWarningSnackBar('${student.fullName} already timed out for ${_isAmSelected ? "AM" : "PM"}');
       return;
     }
@@ -150,7 +150,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
       type: type,
     );
 
-    dayProvider.addRecordToDay(dayProvider.selectedDayId!, record);
+    eventProvider.addRecordToEvent(eventProvider.selectedEventId!, record);
 
     final dateFormat = DateFormat('MMMM dd');
     final timeFormat = DateFormat('h:mm a');
@@ -289,8 +289,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       color: Colors.white,
-      child: Consumer<DayProvider>(
-        builder: (context, dayProvider, child) {
+      child: Consumer<AttendanceEventProvider>(
+        builder: (context, eventProvider, child) {
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
@@ -299,16 +299,16 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
-                value: dayProvider.selectedDayId,
+                value: eventProvider.selectedEventId,
                 isExpanded: true,
                 hint: const Text('Select Event'),
                 icon: const Icon(Icons.calendar_today, size: 18),
-                items: dayProvider.days.map((day) {
+                items: eventProvider.events.map((day) {
                   return DropdownMenuItem(value: day.id, child: Text(day.name));
                 }).toList(),
                 onChanged: (value) {
                   if (value != null) {
-                    dayProvider.selectDay(value);
+                    eventProvider.selectEvent(value);
                   }
                 },
               ),
@@ -536,9 +536,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
   }
 
   Widget _buildRecordsList() {
-    return Consumer<DayProvider>(
-      builder: (context, dayProvider, child) {
-        final day = dayProvider.selectedDay;
+    return Consumer<AttendanceEventProvider>(
+      builder: (context, eventProvider, child) {
+        final day = eventProvider.selectedEvent;
         if (day == null) {
           return Center(
             child: Column(

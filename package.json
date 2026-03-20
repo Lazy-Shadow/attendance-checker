@@ -1,0 +1,25 @@
+{
+  "name": "attendance-checker",
+  "version": "1.0.0",
+  "description": "A new Flutter project.",
+  "main": "migrate.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lazy-Shadow/attendance-checker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Lazy-Shadow/attendance-checker/issues"
+  },
+  "homepage": "https://github.com/Lazy-Shadow/attendance-checker#readme"
+}

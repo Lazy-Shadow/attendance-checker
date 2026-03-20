@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/day_provider.dart';
-import '../models/attendance_record.dart';
 import 'attendance_day_screen.dart';
 
 class AttendanceScreen extends StatefulWidget {
@@ -20,7 +19,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     super.dispose();
   }
 
-  void _showCreateDayDialog(BuildContext context) {
+  void _showCreateEventDialog(BuildContext context) {
     final controller = TextEditingController();
     showDialog(
       context: context,
@@ -30,14 +29,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           children: [
             Icon(Icons.calendar_today, color: Color(0xFF8B5CF6)),
             SizedBox(width: 8),
-            Text('Create Attendance'),
+            Text('Create Event'),
           ],
         ),
         content: TextField(
           controller: controller,
           decoration: InputDecoration(
-            labelText: 'Event',
-            hintText: 'Event name',
+            labelText: 'Event Name',
+            hintText: 'e.g., Monday Assembly',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
           autofocus: true,
@@ -50,7 +49,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ElevatedButton(
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
-                context.read<DayProvider>().createDay(controller.text.trim());
+                context.read<AttendanceEventProvider>().createEvent(controller.text.trim());
                 Navigator.pop(context);
               }
             },
@@ -71,7 +70,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
         title: const Text(
-          'Attendance',
+          'Attendance Events',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
@@ -81,23 +80,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () => _showCreateDayDialog(context),
-            tooltip: 'Create Attendance',
+            onPressed: () => _showCreateEventDialog(context),
+            tooltip: 'Create Event',
           ),
         ],
       ),
-      body: Consumer<DayProvider>(
-        builder: (context, dayProvider, child) {
-          if (dayProvider.days.isEmpty) {
-            return _buildEmptyState(context, dayProvider);
+      body: Consumer<AttendanceEventProvider>(
+        builder: (context, eventProvider, child) {
+          if (eventProvider.events.isEmpty) {
+            return _buildEmptyState(context, eventProvider);
           }
-          return _buildContent(context, dayProvider);
+          return _buildContent(context, eventProvider);
         },
       ),
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, DayProvider dayProvider) {
+  Widget _buildEmptyState(BuildContext context, AttendanceEventProvider eventProvider) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -134,15 +133,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Create Attendance Folder To start recording attendance',
+              'Create an event to start recording attendance',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: Colors.grey[500]),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: () => _showCreateDayDialog(context),
+              onPressed: () => _showCreateEventDialog(context),
               icon: const Icon(Icons.add),
-              label: const Text('Create Attendance'),
+              label: const Text('Create Event'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF8B5CF6),
                 foregroundColor: Colors.white,
@@ -158,11 +157,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  Widget _buildContent(BuildContext context, DayProvider dayProvider) {
+  Widget _buildContent(BuildContext context, AttendanceEventProvider eventProvider) {
     final searchQuery = _searchController.text.toLowerCase();
-    final filteredDays = dayProvider.days.where((day) {
+    final filteredEvents = eventProvider.events.where((event) {
       if (searchQuery.isEmpty) return true;
-      return day.name.toLowerCase().contains(searchQuery);
+      return event.name.toLowerCase().contains(searchQuery);
     }).toList();
 
     return Column(
@@ -173,7 +172,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           child: TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'Search by event name',
+              hintText: 'Search events',
               prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -187,7 +186,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
         ),
         Expanded(
-          child: filteredDays.isEmpty
+          child: filteredEvents.isEmpty
               ? Center(
                   child: Text(
                     searchQuery.isEmpty ? 'No events yet' : 'No results found',
@@ -196,9 +195,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: filteredDays.length,
+                  itemCount: filteredEvents.length,
                   itemBuilder: (context, index) {
-                    final day = filteredDays[index];
+                    final event = filteredEvents[index];
 
                     return GestureDetector(
                       onTap: () {
@@ -206,7 +205,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (context) =>
-                                AttendanceDayScreen(dayId: day.id),
+                                AttendanceDayScreen(eventId: event.id),
                           ),
                         );
                       },
@@ -246,7 +245,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    day.name,
+                                    event.name,
                                     style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
@@ -254,7 +253,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '${day.records.length} attendance records',
+                                    '${event.records.length} records',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: Colors.grey[500],
