@@ -60,8 +60,8 @@ class QrDisplayScreen extends StatelessWidget {
           SnackBar(
             content: Text('Error saving QR: $e'),
             backgroundColor: Colors.red,
-          ),
-        );
+          ), 
+        ); // snbar
       }
     }
   }
