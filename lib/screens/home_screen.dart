@@ -16,6 +16,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  Future<void> _onRefresh() async {
+    await Future.wait([
+      context.read<FolderProvider>().refresh(),
+      context.read<AttendanceEventProvider>().refresh(),
+    ]);
+  }
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -80,11 +86,14 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        child: RefreshIndicator(
+          onRefresh: _onRefresh,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
@@ -320,8 +329,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildStatCard({
     required IconData icon,

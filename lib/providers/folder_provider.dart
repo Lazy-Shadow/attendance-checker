@@ -125,8 +125,9 @@ class Folder {
 
 class FolderProvider extends ChangeNotifier {
   List<Folder> _folders = [];
-  String? _selectedId;
   String? _currentUserId;
+  String? _selectedId;
+  bool _firestoreInitialized = false;
 
   List<Folder> get folders => _folders;
   String? get selectedId => _selectedId;
@@ -149,20 +150,27 @@ class FolderProvider extends ChangeNotifier {
   }
 
   Future<void> _loadLocal() async {
+    if (_firestoreInitialized) return;
+    
     final prefs = await SharedPreferences.getInstance();
     final data = prefs.getString('folders');
     if (data != null && data.isNotEmpty) {
-      _folders = (jsonDecode(data) as List)
+      final newFolders = (jsonDecode(data) as List)
           .map((e) => Folder.fromJson(e))
           .toList();
+      final seenIds = <String>{};
+      _folders = newFolders.where((f) => f.id.isNotEmpty && f.name.isNotEmpty && seenIds.add(f.id)).toList();
       if (_folders.isNotEmpty) _selectedId = _folders.first.id;
       notifyListeners();
     }
   }
 
   void _listenToFirestore() {
+    _firestoreInitialized = true;
     FirebaseFirestore.instance.collection('folders').snapshots().listen((snapshot) {
-      _folders = snapshot.docs.map((doc) => Folder.fromJson(doc.data())).toList();
+      final newFolders = snapshot.docs.map((doc) => Folder.fromJson(doc.data())).toList();
+      final seenIds = <String>{};
+      _folders = newFolders.where((f) => f.id.isNotEmpty && f.name.isNotEmpty && seenIds.add(f.id)).toList();
       _folders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       _saveLocal();
       if (_folders.isNotEmpty && _selectedId == null) {
@@ -173,6 +181,22 @@ class FolderProvider extends ChangeNotifier {
       debugPrint('Error listening to Firestore: $e');
       _loadLocal();
     });
+  }
+
+  Future<void> refresh() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('folders')
+          .get();
+      final newFolders = snapshot.docs.map((doc) => Folder.fromJson(doc.data())).toList();
+      final seenIds = <String>{};
+      _folders = newFolders.where((f) => f.id.isNotEmpty && f.name.isNotEmpty && seenIds.add(f.id)).toList();
+      _folders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      _saveLocal();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error refreshing folders: $e');
+    }
   }
 
   Future<void> _saveLocal() async {

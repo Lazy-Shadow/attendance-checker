@@ -141,7 +141,7 @@ class _AuthGateState extends State<AuthGate> {
                     borderSide: BorderSide(color: brandColor, width: 2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  labelStyle: TextStyle(color: brandColor.withOpacity(0.8)),
+                  labelStyle: TextStyle(color: brandColor.withValues(alpha: 0.8)),
                 ),
                 // Customizes the "Forgot Password" and "Register" toggle links
                 textButtonTheme: TextButtonThemeData(

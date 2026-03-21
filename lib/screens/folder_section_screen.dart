@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
 import '../models/student.dart';
 import '../providers/folder_provider.dart';
+import '../providers/day_provider.dart';
 import 'qr_display_screen.dart';
 
 class FolderSectionScreen extends StatefulWidget {
@@ -32,6 +30,13 @@ class _FolderSectionScreenState extends State<FolderSectionScreen> {
     _studentNumberController.dispose();
     _programYearController.dispose();
     super.dispose();
+  }
+
+  Future<void> _onRefresh() async {
+    await Future.wait([
+      context.read<FolderProvider>().refresh(),
+      context.read<AttendanceEventProvider>().refresh(),
+    ]);
   }
 
   void _showAddStudentDialog() {
@@ -366,77 +371,6 @@ class _FolderSectionScreenState extends State<FolderSectionScreen> {
     );
   }
 
-  Future<void> _pickFiles() async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        allowMultiple: true,
-        type: FileType.any,
-      );
-
-      if (result != null && result.files.isNotEmpty) {
-        final folderProvider = context.read<FolderProvider>();
-
-        for (final file in result.files) {
-          if (file.path != null) {
-            final appDir = await getApplicationDocumentsDirectory();
-            final fileDir = Directory(
-              '${appDir.path}/folder_files/${widget.folderId}',
-            );
-            if (!await fileDir.exists()) {
-              await fileDir.create(recursive: true);
-            }
-
-            final fileName =
-                '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
-            final newPath = '${fileDir.path}/$fileName';
-
-            final sourceFile = File(file.path!);
-            await sourceFile.copy(newPath);
-
-            String type = 'file';
-            if (file.name.toLowerCase().endsWith('.jpg') ||
-                file.name.toLowerCase().endsWith('.jpeg') ||
-                file.name.toLowerCase().endsWith('.png') ||
-                file.name.toLowerCase().endsWith('.gif')) {
-              type = 'image';
-            } else if (file.name.toLowerCase().endsWith('.pdf')) {
-              type = 'pdf';
-            } else if (file.name.toLowerCase().endsWith('.doc') ||
-                file.name.toLowerCase().endsWith('.docx')) {
-              type = 'document';
-            }
-
-            final uploadedFile = UploadedFile(
-              id: DateTime.now().millisecondsSinceEpoch.toString() + file.name,
-              name: file.name,
-              path: newPath,
-              type: type,
-              uploadedAt: DateTime.now(),
-            );
-
-            folderProvider.addFile(widget.folderId, uploadedFile);
-          }
-        }
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${result.files.length} file(s) uploaded'),
-              backgroundColor: const Color(0xFF10B981),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error uploading files: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
   void _showFolderOptions() {
     final folderProvider = context.read<FolderProvider>();
     Folder folder;
@@ -524,53 +458,6 @@ class _FolderSectionScreenState extends State<FolderSectionScreen> {
     );
   }
 
-  void _showRenameDialog(String currentName) {
-    final controller = TextEditingController(text: currentName);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.edit, color: Color(0xFF2563EB)),
-            SizedBox(width: 8),
-            Text('Rename Section'),
-          ],
-        ),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            labelText: 'Section Name',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (controller.text.trim().isNotEmpty) {
-                context.read<FolderProvider>().rename(
-                  widget.folderId,
-                  controller.text.trim(),
-                );
-                Navigator.pop(ctx);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB),
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Rename'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _confirmDeleteFolder(String folderName) {
     showDialog(
       context: context,
@@ -651,48 +538,50 @@ class _FolderSectionScreenState extends State<FolderSectionScreen> {
           ),
         ],
       ),
-      body: Consumer<FolderProvider>(
-        builder: (context, folderProvider, child) {
-          final folder = folderProvider.folders.firstWhere(
-            (f) => f.id == widget.folderId,
-            orElse: () => Folder(
-              id: '',
-              name: '',
-              ownerId: '',
-              createdAt: DateTime.now(),
-              students: [],
-            ),
-          );
-
-          if (folder.students.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.qr_code_2, size: 64, color: Colors.grey[300]),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No students yet',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Tap + to add a student',
-                      style: TextStyle(color: Colors.grey[500]),
-                    ),
-                  ],
-                ),
+      body: RefreshIndicator(
+        onRefresh: _onRefresh,
+        child: Consumer<FolderProvider>(
+          builder: (context, folderProvider, child) {
+            final folder = folderProvider.folders.firstWhere(
+              (f) => f.id == widget.folderId,
+              orElse: () => Folder(
+                id: '',
+                name: '',
+                ownerId: '',
+                createdAt: DateTime.now(),
+                students: [],
               ),
             );
-          }
 
-          return ListView.builder(
+            if (folder.students.isEmpty) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.qr_code_2, size: 64, color: Colors.grey[300]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No students yet',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tap + to add a student',
+                        style: TextStyle(color: Colors.grey[500]),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: folder.students.length,
             itemBuilder: (context, index) {
@@ -773,6 +662,7 @@ class _FolderSectionScreenState extends State<FolderSectionScreen> {
             },
           );
         },
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddStudentDialog,

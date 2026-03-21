@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/day_provider.dart';
+import '../providers/folder_provider.dart';
 import 'attendance_day_screen.dart';
 
 class AttendanceScreen extends StatefulWidget {
@@ -17,6 +18,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _onRefresh() async {
+    await Future.wait([
+      context.read<FolderProvider>().refresh(),
+      context.read<AttendanceEventProvider>().refresh(),
+    ]);
   }
 
   void _showCreateEventDialog(BuildContext context) {
@@ -36,7 +44,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           controller: controller,
           decoration: InputDecoration(
             labelText: 'Event Name',
-            hintText: 'e.g., Monday Assembly',
+            hintText: 'Event',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
           autofocus: true,
@@ -85,13 +93,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
         ],
       ),
-      body: Consumer<AttendanceEventProvider>(
-        builder: (context, eventProvider, child) {
-          if (eventProvider.events.isEmpty) {
-            return _buildEmptyState(context, eventProvider);
-          }
-          return _buildContent(context, eventProvider);
-        },
+      body: RefreshIndicator(
+        onRefresh: _onRefresh,
+        child: Consumer<AttendanceEventProvider>(
+          builder: (context, eventProvider, child) {
+            if (eventProvider.events.isEmpty) {
+              return _buildEmptyState(context, eventProvider);
+            }
+            return _buildContent(context, eventProvider);
+          },
+        ),
       ),
     );
   }

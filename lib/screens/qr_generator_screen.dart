@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../models/student.dart';
 import '../providers/folder_provider.dart';
+import '../providers/day_provider.dart';
 import 'qr_display_screen.dart';
 import 'folder_section_screen.dart';
 
@@ -28,6 +29,13 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
     _studentNumberController.dispose();
     _programYearController.dispose();
     super.dispose();
+  }
+
+  Future<void> _onRefresh() async {
+    await Future.wait([
+      context.read<FolderProvider>().refresh(),
+      context.read<AttendanceEventProvider>().refresh(),
+    ]);
   }
 
   void _showCreateFolderDialog() {
@@ -329,13 +337,16 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
           ),
         ],
       ),
-      body: Consumer<FolderProvider>(
-        builder: (context, folderProvider, child) {
-          if (folderProvider.folders.isEmpty) {
-            return _buildEmptyState(folderProvider);
-          }
-          return _buildFolderContent(folderProvider);
-        },
+      body: RefreshIndicator(
+        onRefresh: _onRefresh,
+        child: Consumer<FolderProvider>(
+          builder: (context, folderProvider, child) {
+            if (folderProvider.folders.isEmpty) {
+              return _buildEmptyState(folderProvider);
+            }
+            return _buildFolderContent(folderProvider);
+          },
+        ),
       ),
       floatingActionButton: Consumer<FolderProvider>(
         builder: (context, folderProvider, child) {

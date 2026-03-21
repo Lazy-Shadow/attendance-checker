@@ -45,6 +45,13 @@ class _ScannerScreenState extends State<ScannerScreen> {
     super.dispose();
   }
 
+  Future<void> _onRefresh() async {
+    await Future.wait([
+      context.read<FolderProvider>().refresh(),
+      context.read<AttendanceEventProvider>().refresh(),
+    ]);
+  }
+
   void _onDetect(BarcodeCapture capture) {
     if (_isProcessing) return;
 
@@ -254,33 +261,36 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
         ],
       ),
-      body: Column(
-        children: [
-          _buildDaySelector(),
-          _buildAmPmSelector(),
-          Container(
-            margin: const EdgeInsets.all(16),
-            height: _isWeb ? 0 : MediaQuery.of(context).size.height * 0.25,
-            child: _isWeb
-                ? (_showManualInput
-                      ? _buildManualInput()
-                      : _buildWebPlaceholder())
-                : _buildScanner(),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildFilterButton(0, 'All', Icons.list),
-                _buildFilterButton(1, 'Time In', Icons.login),
-                _buildFilterButton(2, 'Time Out', Icons.logout),
-              ],
+      body: RefreshIndicator(
+        onRefresh: _onRefresh,
+        child: Column(
+          children: [
+            _buildDaySelector(),
+            _buildAmPmSelector(),
+            Container(
+              margin: const EdgeInsets.all(16),
+              height: _isWeb ? 0 : MediaQuery.of(context).size.height * 0.25,
+              child: _isWeb
+                  ? (_showManualInput
+                        ? _buildManualInput()
+                        : _buildWebPlaceholder())
+                  : _buildScanner(),
             ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(child: _buildRecordsList()),
-        ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildFilterButton(0, 'All', Icons.list),
+                  _buildFilterButton(1, 'Time In', Icons.login),
+                  _buildFilterButton(2, 'Time Out', Icons.logout),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(child: _buildRecordsList()),
+          ],
+        ),
       ),
     );
   }
@@ -602,7 +612,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
           itemCount: filteredRecords.length,
           itemBuilder: (context, index) {
             final record = filteredRecords[index];
-            final timeFormat = DateFormat('MMMM dd h:mm a');
             final isTimeIn = record.type == AttendanceType.timeIn;
 
             return Container(

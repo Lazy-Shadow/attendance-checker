@@ -119,6 +119,7 @@ class AttendanceEventProvider extends ChangeNotifier {
   String? _currentUserId;
   bool _isLoading = true;
   bool _isOnline = true;
+  bool _firestoreInitialized = false;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   List<AttendanceEvent> get events => _events;
@@ -157,12 +158,16 @@ class AttendanceEventProvider extends ChangeNotifier {
   }
 
   Future<void> _loadLocal() async {
+    if (_firestoreInitialized) return;
+    
     try {
       final prefs = await SharedPreferences.getInstance();
       final cachedData = prefs.getString('cached_events');
       if (cachedData != null && cachedData.isNotEmpty) {
         final List<dynamic> decoded = jsonDecode(cachedData);
-        _events = decoded.map((json) => AttendanceEvent.fromJson(json)).toList();
+        final newEvents = decoded.map((json) => AttendanceEvent.fromJson(json)).toList();
+        final seenIds = <String>{};
+        _events = newEvents.where((e) => e.id.isNotEmpty && seenIds.add(e.id)).toList();
         _events.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       }
       if (_events.isNotEmpty && _selectedEventId == null) {
@@ -175,11 +180,14 @@ class AttendanceEventProvider extends ChangeNotifier {
   }
 
   void _listenToFirestore() {
+    _firestoreInitialized = true;
     _isLoading = true;
     notifyListeners();
 
     _firestore.collection('attendance_events').snapshots().listen((snapshot) {
-      _events = snapshot.docs.map((doc) => AttendanceEvent.fromMap(doc.data())).toList();
+      final newEvents = snapshot.docs.map((doc) => AttendanceEvent.fromMap(doc.data())).toList();
+      final seenIds = <String>{};
+      _events = newEvents.where((e) => e.id.isNotEmpty && seenIds.add(e.id)).toList();
       _events.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       _cacheLocally();
       if (_events.isNotEmpty && _selectedEventId == null) {
@@ -192,6 +200,20 @@ class AttendanceEventProvider extends ChangeNotifier {
       _isOnline = false;
       _loadLocal();
     });
+  }
+
+  Future<void> refresh() async {
+    try {
+      final snapshot = await _firestore.collection('attendance_events').get();
+      final newEvents = snapshot.docs.map((doc) => AttendanceEvent.fromMap(doc.data())).toList();
+      final seenIds = <String>{};
+      _events = newEvents.where((e) => e.id.isNotEmpty && seenIds.add(e.id)).toList();
+      _events.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      await _cacheLocally();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error refreshing events: $e');
+    }
   }
 
   Future<void> _cacheLocally() async {

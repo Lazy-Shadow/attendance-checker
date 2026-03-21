@@ -91,7 +91,7 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                       title: const Text('Download as Excel'),
                       onTap: () {
                         Navigator.pop(ctx);
-                        _downloadAsExcel(event!);
+                        _downloadAsExcel(event);
                       },
                     ),
                     ListTile(
@@ -99,7 +99,7 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                       title: const Text('Rename Event'),
                       onTap: () {
                         Navigator.pop(ctx);
-                        _showRenameDialog(event!.name);
+                        _showRenameDialog(event.name);
                       },
                     ),
                     ListTile(
@@ -118,7 +118,7 @@ class _AttendanceDayScreenState extends State<AttendanceDayScreen> {
                       ),
                       onTap: () {
                         Navigator.pop(ctx);
-                        _confirmDeleteEvent(event!.name);
+                        _confirmDeleteEvent(event.name);
                       },
                     ),
                   ],
